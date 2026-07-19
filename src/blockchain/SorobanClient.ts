@@ -9,7 +9,6 @@ import {
   Operation,
   TransactionBuilder,
 } from '@stellar/stellar-sdk';
-import { EventHub, GameEvents } from '../events/EventHub';
 import { walletConnector } from './WalletConnector';
 
 export interface PlayerState {
@@ -49,11 +48,9 @@ class SorobanClient {
       return null;
     }
     try {
-      const { result } = await this.server.queryContract<any>(
-        this.contractId,
-        'get_player',
-        [nativeToScVal(publicKey, { type: 'address' })]
-      );
+      const result = await this.simulateQuery('get_player', [
+        nativeToScVal(publicKey, { type: 'address' }),
+      ]);
       return this.parsePlayerState(result);
     } catch (error) {
       console.warn('[SorobanClient] get_player failed:', error);
@@ -64,15 +61,11 @@ class SorobanClient {
   async canAccessLevel(publicKey: string, requiredLevel: number): Promise<boolean> {
     if (!this.isDeployed) return true;
     try {
-      const { result } = await this.server.queryContract<boolean>(
-        this.contractId,
-        'can_access_level',
-        [
-          nativeToScVal(publicKey, { type: 'address' }),
-          nativeToScVal(requiredLevel, { type: 'u32' }),
-        ]
-      );
-      return result;
+      const result = await this.simulateQuery('can_access_level', [
+        nativeToScVal(publicKey, { type: 'address' }),
+        nativeToScVal(requiredLevel, { type: 'u32' }),
+      ]);
+      return Boolean(result);
     } catch (error) {
       console.warn('[SorobanClient] can_access_level failed:', error);
       return true;
@@ -82,15 +75,11 @@ class SorobanClient {
   async getGameState(): Promise<GameState | null> {
     if (!this.isDeployed) return null;
     try {
-      const { result } = await this.server.queryContract<any>(
-        this.contractId,
-        'get_game_state',
-        []
-      );
+      const result = await this.simulateQuery('get_game_state', []);
       return {
-        total_players: Number(result.total_players),
-        total_transactions: Number(result.total_transactions),
-        contract_version: Number(result.contract_version),
+        total_players: Number((result as any).total_players),
+        total_transactions: Number((result as any).total_transactions),
+        contract_version: Number((result as any).contract_version),
       };
     } catch (error) {
       console.warn('[SorobanClient] get_game_state failed:', error);
@@ -139,6 +128,34 @@ class SorobanClient {
       console.error('[SorobanClient] approve_action failed:', error);
       return null;
     }
+  }
+
+  private async simulateQuery(method: string, args: xdr.ScVal[]): Promise<any> {
+    const sourceAccount = await this.server.getAccount('GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF');
+
+    const transaction = new TransactionBuilder(sourceAccount, {
+      fee: BASE_FEE,
+      networkPassphrase: Networks.TESTNET,
+    })
+      .addOperation(
+        Operation.invokeContractFunction({
+          contract: this.contractId,
+          function: method,
+          args,
+        })
+      )
+      .setTimeout(30)
+      .build();
+
+    const simulated = await this.server.simulateTransaction(transaction);
+    if (rpc.Api.isSimulationError(simulated)) {
+      throw new Error(`Simulation failed: ${simulated.error}`);
+    }
+
+    if (simulated.result) {
+      return scValToNative(simulated.result.retval);
+    }
+    return null;
   }
 
   private async invokeContract(
@@ -192,11 +209,9 @@ class SorobanClient {
     while (attempts < 30) {
       const txResponse = await this.server.getTransaction(txHash);
       if (txResponse.status === rpc.Api.GetTransactionStatus.SUCCESS) {
-        if (txResponse.resultXdr) {
-          const resultMeta = xdr.TransactionMeta.fromXDR(txResponse.resultXdr, 'base64');
-          return this.extractContractResult(resultMeta);
-        }
-        return null;
+        const successful = txResponse as rpc.Api.GetSuccessfulTransactionResponse;
+        const resultMeta = successful.resultMetaXdr;
+        return this.extractContractResult(resultMeta);
       }
       if (txResponse.status === rpc.Api.GetTransactionStatus.FAILED) {
         throw new Error('Transaction failed on-chain');

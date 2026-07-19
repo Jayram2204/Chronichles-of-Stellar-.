@@ -19,17 +19,21 @@ export const GameScreen: React.FC = () => {
     name: null,
   });
 
-  const [reputation, setReputation] = useState(25); // Starts at 25
+  const [reputation, setReputation] = useState(25);
   const [inventory, setInventory] = useState<string[]>(['Credits: 50']);
   const [isSyncing, setIsSyncing] = useState(false);
   const [currentLevel, setCurrentLevel] = useState(1);
   const [ledgerLogs, setLedgerLogs] = useState<Array<{ action: string; hash: string; ledger: number }>>([]);
+  const [playerHp, setPlayerHp] = useState(100);
+  const [playerMaxHp] = useState(100);
+  const [score, setScore] = useState(0);
+  const [enemyKills, setEnemyKills] = useState(0);
+  const [damageFlash, setDamageFlash] = useState(false);
+  const [levelClearBanner, setLevelClearBanner] = useState(false);
 
   useEffect(() => {
-    // Sync initial wallet state
     setWallet(walletConnector.getState());
 
-    // Event listeners
     const handleInteract = (data: { npcId: string | null; name: string | null }) => {
       setActiveNpc({ id: data.npcId, name: data.name });
     };
@@ -59,7 +63,6 @@ export const GameScreen: React.FC = () => {
         ...prev,
       ]);
 
-      // Apply on-chain mutation local state updates
       if (data.action === 'unlock_keycard') {
         setInventory((prev) => {
           if (!prev.includes('A.E.O.N. Passkey')) {
@@ -68,12 +71,10 @@ export const GameScreen: React.FC = () => {
           return prev;
         });
         setReputation((prev) => Math.min(prev + 15, 100));
-        // Tell Phaser that the player has the keycard
         EventHub.emit('inventory_updated', { hasKeycard: true });
       } else if (data.action === 'open_firewall') {
         setInventory((prev) => [...prev.filter((i) => i !== 'A.E.O.N. Passkey'), 'Sector 09 Pass']);
         setReputation((prev) => Math.min(prev + 25, 100));
-        // Tell Phaser to lower the firewall
         EventHub.emit('firewall_opened');
       }
     };
@@ -84,6 +85,24 @@ export const GameScreen: React.FC = () => {
 
     const handleLevelChanged = (data: { level: number }) => {
       setCurrentLevel(data.level);
+      setLevelClearBanner(false);
+    };
+
+    const handlePlayerDamage = (data: { hp: number; maxHp: number; _damage: number }) => {
+      setPlayerHp(data.hp);
+      setDamageFlash(true);
+      setTimeout(() => setDamageFlash(false), 200);
+    };
+
+    const handleEnemyDeath = (data: { type: string; score: number; totalKilled: number }) => {
+      setScore(data.score);
+      setEnemyKills(data.totalKilled);
+    };
+
+    const handleLevelCleared = (data: { score: number; kills: number }) => {
+      setLevelClearBanner(true);
+      setScore(data.score);
+      setEnemyKills(data.kills);
     };
 
     EventHub.on(GameEvents.INTERACT_TRIGGER, handleInteract);
@@ -93,8 +112,10 @@ export const GameScreen: React.FC = () => {
     EventHub.on(GameEvents.TX_CONFIRMED, handleTxConfirmed);
     EventHub.on(GameEvents.TX_FAILED, handleTxFailed);
     EventHub.on(GameEvents.LEVEL_CHANGED, handleLevelChanged);
+    EventHub.on(GameEvents.PLAYER_DAMAGE, handlePlayerDamage);
+    EventHub.on(GameEvents.ENEMY_DEATH, handleEnemyDeath);
+    EventHub.on(GameEvents.LEVEL_CLEARED, handleLevelCleared);
 
-    // Subscribe to Phaser agent approval and trigger Stellar client
     const handleAgentDecision = async (data: { npcId: string; decision: string }) => {
       if (data.decision === 'approve') {
         const action = data.npcId === 'merchant' ? 'unlock_keycard' : 'open_firewall';
@@ -112,6 +133,9 @@ export const GameScreen: React.FC = () => {
       EventHub.off(GameEvents.TX_CONFIRMED, handleTxConfirmed);
       EventHub.off(GameEvents.TX_FAILED, handleTxFailed);
       EventHub.off(GameEvents.LEVEL_CHANGED, handleLevelChanged);
+      EventHub.off(GameEvents.PLAYER_DAMAGE, handlePlayerDamage);
+      EventHub.off(GameEvents.ENEMY_DEATH, handleEnemyDeath);
+      EventHub.off(GameEvents.LEVEL_CLEARED, handleLevelCleared);
       EventHub.off(GameEvents.AGENT_DECISION, handleAgentDecision);
     };
   }, []);
@@ -128,9 +152,12 @@ export const GameScreen: React.FC = () => {
     walletConnector.disconnect();
   };
 
+  const hpPercent = Math.max(0, (playerHp / playerMaxHp) * 100);
+  const hpColor = hpPercent > 50 ? '#00f3ff' : hpPercent > 25 ? '#ffaa00' : '#ff0055';
+
   return (
-    <div className="flex flex-col xl:flex-row w-[1200px] gap-6 bg-[#070312] p-6 border-2 border-[#1e0b36] rounded-xl shadow-[0_0_50px_rgba(30,11,54,0.7)]">
-      
+    <div className={`flex flex-col xl:flex-row w-[1200px] gap-6 bg-[#070312] p-6 border-2 border-[#1e0b36] rounded-xl shadow-[0_0_50px_rgba(30,11,54,0.7)] ${damageFlash ? 'damage-flash' : ''}`}>
+
       {/* Left side: Phaser Game viewport */}
       <div className="flex-1 flex flex-col justify-between">
         <div>
@@ -142,20 +169,68 @@ export const GameScreen: React.FC = () => {
               SECTOR 0{currentLevel} // {currentLevel === 7 ? 'ANCIENT RUINS' : 'GRID NETWORKS'}
             </div>
           </div>
-          
-          {/* Game viewport parent */}
-          <div id="game-container" className="border-2 border-[#1e0b36] rounded-lg overflow-hidden bg-black shadow-[inset_0_0_20px_rgba(0,0,0,0.8)]" />
+
+          {/* Combat HUD overlay */}
+          <div className="relative">
+            <div id="game-container" className="border-2 border-[#1e0b36] rounded-lg overflow-hidden bg-black shadow-[inset_0_0_20px_rgba(0,0,0,0.8)]" />
+
+            {/* In-game overlay HUD */}
+            <div className="absolute top-2 left-2 pointer-events-none">
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-mono text-[#00f3ff] font-bold">HP</span>
+                <div className="w-[120px] h-[8px] bg-black/70 border border-[#00f3ff]/30 rounded-sm overflow-hidden">
+                  <div
+                    className="h-full transition-all duration-300 rounded-sm"
+                    style={{
+                      width: `${hpPercent}%`,
+                      backgroundColor: hpColor,
+                      boxShadow: `0 0 6px ${hpColor}60`,
+                    }}
+                  />
+                </div>
+                <span className="text-[9px] font-mono text-white/60">{Math.ceil(playerHp)}/{playerMaxHp}</span>
+              </div>
+            </div>
+
+            {/* Score display */}
+            <div className="absolute top-2 right-2 pointer-events-none text-right">
+              <div className="text-[10px] font-mono text-[#ffaa00] font-bold">
+                SCORE: {score}
+              </div>
+              <div className="text-[9px] font-mono text-[#ff0055]">
+                KILLS: {enemyKills}
+              </div>
+            </div>
+
+            {/* Level clear banner */}
+            {levelClearBanner && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="level-clear-banner text-center">
+                  <div className="text-2xl font-bold text-[#00f3ff] tracking-widest font-mono drop-shadow-[0_0_20px_rgba(0,243,255,0.8)]">
+                    SECTOR CLEARED
+                  </div>
+                  <div className="text-xs text-[#ffaa00] mt-2 font-mono">
+                    +{score} PTS // {enemyKills} NEUTRALIZED
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Keyboard instructions */}
+        {/* Controls instructions */}
         <div className="mt-4 p-3 bg-[#0d061c] border border-[#1b0b2e] rounded text-[11px] text-[#857ab3] font-mono leading-relaxed">
-          🎮 <strong className="text-[#00f3ff]">CONTROLS:</strong> Use Keyboard <strong className="text-white">Arrow Keys (←, ↑, →)</strong> to run and jump. Walk near NPCs to interact. Walk to the right edge of the screen to advance sectors once the firewall gateway is cleared.
+          <strong className="text-[#00f3ff]">CONTROLS:</strong>{' '}
+          <strong className="text-white">WASD / Arrows</strong> Move & Jump.{' '}
+          <strong className="text-[#ff0055]">H</strong> Punch.{' '}
+          <strong className="text-[#ff0055]">J</strong> Kick.{' '}
+          Walk near NPCs to interact. Clear all enemies to advance sectors.
         </div>
       </div>
 
       {/* Right side: Cyberpunk HUD & Terminal Panel */}
       <div className="w-full xl:w-[420px] flex flex-col gap-5">
-        
+
         {/* Wallet Connection widget */}
         <div className="bg-[#0c051a] border border-[#2d124d] rounded-lg p-4 font-mono shadow-[0_0_15px_rgba(30,11,54,0.4)]">
           <div className="flex justify-between items-center mb-3">
@@ -200,8 +275,26 @@ export const GameScreen: React.FC = () => {
         {/* Character HUD metrics */}
         <div className="bg-[#0c051a] border border-[#2d124d] rounded-lg p-4 font-mono">
           <h3 className="text-xs font-bold text-[#a397db] mb-3 uppercase tracking-wider">👤 COURIER STATUS</h3>
-          
+
           <div className="space-y-3">
+            {/* HP bar */}
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-[#d2c9ff]">Health:</span>
+                <span className="font-bold" style={{ color: hpColor }}>{Math.ceil(playerHp)}/{playerMaxHp}</span>
+              </div>
+              <div className="w-full h-2 bg-[#17082b] rounded-full overflow-hidden border border-[#28114a]">
+                <div
+                  className="h-full transition-all duration-300"
+                  style={{
+                    width: `${hpPercent}%`,
+                    backgroundColor: hpColor,
+                    boxShadow: `0 0 8px ${hpColor}60`,
+                  }}
+                />
+              </div>
+            </div>
+
             {/* Reputation bar */}
             <div>
               <div className="flex justify-between text-xs mb-1">
@@ -209,10 +302,26 @@ export const GameScreen: React.FC = () => {
                 <span className="text-[#00f3ff] font-bold">{reputation}/100</span>
               </div>
               <div className="w-full h-1.5 bg-[#17082b] rounded-full overflow-hidden border border-[#28114a]">
-                <div 
-                  className="h-full bg-gradient-to-r from-[#ff0055] to-[#00f3ff] transition-all duration-500" 
+                <div
+                  className="h-full bg-gradient-to-r from-[#ff0055] to-[#00f3ff] transition-all duration-500"
                   style={{ width: `${reputation}%` }}
                 />
+              </div>
+            </div>
+
+            {/* Combat stats */}
+            <div className="flex gap-4 text-xs">
+              <div className="flex-1 bg-[#150a29] p-2 rounded border border-[#230f3f] text-center">
+                <div className="text-[10px] text-[#857ab3]">SCORE</div>
+                <div className="text-[#ffaa00] font-bold">{score}</div>
+              </div>
+              <div className="flex-1 bg-[#150a29] p-2 rounded border border-[#230f3f] text-center">
+                <div className="text-[10px] text-[#857ab3]">KILLS</div>
+                <div className="text-[#ff0055] font-bold">{enemyKills}</div>
+              </div>
+              <div className="flex-1 bg-[#150a29] p-2 rounded border border-[#230f3f] text-center">
+                <div className="text-[10px] text-[#857ab3]">SECTOR</div>
+                <div className="text-[#00f3ff] font-bold">{currentLevel}</div>
               </div>
             </div>
 
@@ -222,7 +331,7 @@ export const GameScreen: React.FC = () => {
               <div className="flex flex-wrap gap-2">
                 {inventory.map((item, idx) => (
                   <span key={idx} className="text-[10px] bg-[#1e0a36] border border-[#441a7d] text-white px-2 py-0.5 rounded font-semibold uppercase tracking-wider">
-                    📦 {item}
+                    {item}
                   </span>
                 ))}
               </div>
