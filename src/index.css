@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cyber-cyan: #00f3ff;
+  --color-cyber-magenta: #ff0055;
+  --color-cyber-purple: #1e0b36;
+  --color-grid-dark: #070312;
+}
+
+body {
+  margin: 0;
+  background-color: #070312;
+  color: #e2e8f0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  overflow-x: hidden;
+}
+
+/* Slick terminal custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0d061c;
+}
+::-webkit-scrollbar-thumb {
+  background: #2f1754;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #46257a;
+}
