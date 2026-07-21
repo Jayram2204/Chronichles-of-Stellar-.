@@ -11,10 +11,13 @@ export interface WalletState {
   isFreighter: boolean;
 }
 
-const NETWORK_PASSPHRASE = import.meta.env.VITE_STELLAR_NETWORK || 'TESTNET';
+const NETWORK_NAME = import.meta.env.VITE_STELLAR_NETWORK || 'TESTNET';
+const NETWORK_PASSPHRASE = NETWORK_NAME === 'PUBLIC'
+  ? 'Public Global Stellar Network ; September 2015'
+  : 'Test SDF Network ; September 2015';
 const HORIZON_URL =
   import.meta.env.VITE_HORIZON_URL ||
-  (NETWORK_PASSPHRASE === 'PUBLIC'
+  (NETWORK_NAME === 'PUBLIC'
     ? 'https://horizon.stellar.org'
     : 'https://horizon-testnet.stellar.org');
 

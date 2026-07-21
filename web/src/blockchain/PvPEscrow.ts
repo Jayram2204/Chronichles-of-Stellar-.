@@ -1,21 +1,12 @@
 import * as StellarSdk from '@stellar/stellar-sdk';
+import { isConnected, getAddress, getNetwork, signTransaction } from '@stellar/freighter-api';
 
-const NETWORK_PASSPHRASE = 'Public Global Stellar Network ; September 2015';
-const RPC_URL = 'https://mainnet.stellar.validationcloud.io/v1/YMzCn8o6KZrTHjVFXxMu5WE5M';
+const NETWORK_PASSPHRASE = import.meta.env.VITE_STELLAR_NETWORK === 'PUBLIC'
+  ? 'Public Global Stellar Network ; September 2015'
+  : 'Test SDF Network ; September 2015';
+const RPC_URL = import.meta.env.VITE_STELLAR_RPC_URL || 'https://soroban-rpc.mainnet.stellar.org';
 
-export interface Bout {
-  id: string;
-  player_a: string;
-  player_b: string | null;
-  bet_amount: string;
-  score_a: string | null;
-  score_b: string | null;
-  status: 'open' | 'active' | 'resolved';
-  winner: string | null;
-}
-
-// Contract ID set after deployment
-let CONTRACT_ID = '';
+let CONTRACT_ID = import.meta.env.VITE_SOROBAN_CONTRACT_ID || '';
 
 export function setContractId(id: string) {
   CONTRACT_ID = id;
@@ -25,41 +16,8 @@ export function getContractId() {
   return CONTRACT_ID;
 }
 
-async function invokeContract(
-  method: string,
-  args: StellarSdk.xdr.ScVal[],
-  signWithKeypair?: StellarSdk.Keypair
-): Promise<any> {
-  const server = new StellarSdk.SorobanRpc.Server(RPC_URL);
-
-  const contract = new StellarSdk.Contract(CONTRACT_ID);
-  const account = await server.getAccount(signWithKeypair?.publicKey() || CONTRACT_ID);
-
-  const txBuilder = new StellarSdk.TransactionBuilder(account, {
-    fee: StellarSdk.BASE_FEE,
-    networkPassphrase: NETWORK_PASSPHRASE,
-  })
-    .addOperation(contract.call(method, ...args))
-    .setTimeout(StellarSdk.TimeoutInfinite)
-    .build();
-
-  const simResult = await server.simulateTransaction(txBuilder);
-  if (StellarSdk.SorobanRpc.Api.isSimulationError(simResult)) {
-    throw new Error(`Simulation failed: ${simResult.error}`);
-  }
-
-  if (signWithKeypair) {
-    const preparedTx = await server.prepareTransaction(txBuilder);
-    preparedTx.sign(signWithKeypair);
-    const txResult = await server.sendTransaction(preparedTx);
-    return txResult;
-  }
-
-  return simResult;
-}
-
 function toAddress(addr: string): StellarSdk.xdr.ScVal {
-  return StellarSdk.Address.addressToScVal(addr);
+  return new StellarSdk.Address(addr).toScVal();
 }
 
 function toU64(val: number): StellarSdk.xdr.ScVal {
@@ -70,79 +28,64 @@ function toI128(val: number): StellarSdk.xdr.ScVal {
   return StellarSdk.nativeToScVal(BigInt(Math.floor(val * 10_000_000)), { type: 'i128' });
 }
 
-export async function createBout(playerAddress: string, betAmountXlm: number): Promise<any> {
-  // Note: player must sign the transaction with Freighter
-  // This generates the transaction, Freighter signs, then we send
-  return invokeContract(
-    'create_bout',
-    [toAddress(playerAddress), toI128(betAmountXlm)]
-  );
+export interface BoutResult {
+  id: number;
+  challenger: string;
+  opponent: string | null;
+  bet_amount: number;
+  status: string;
+  challenger_score: number;
+  opponent_score: number;
+  winner: string | null;
+  created_at: number;
 }
 
-export async function acceptBout(playerAddress: string, boutId: number): Promise<any> {
-  return invokeContract(
-    'accept_bout',
-    [toAddress(playerAddress), toU64(boutId)]
-  );
+export interface BotBoutResult {
+  id: number;
+  player: string;
+  bet_amount: number;
+  time_limit: number;
+  status: string;
+  player_score: number;
+  completion_time: number;
+  payout: number;
+  created_at: number;
 }
 
-export async function submitScore(
-  playerAddress: string,
-  boutId: number,
-  score: number
-): Promise<any> {
-  return invokeContract(
-    'submit_score',
-    [toAddress(playerAddress), toU64(boutId), toU64(score)]
-  );
-}
-
-export async function getBout(boutId: number): Promise<Bout | null> {
-  try {
-    const result = await invokeContract('get_bout', [toU64(boutId)]);
-    // Parse result from simulation
-    return result as unknown as Bout;
-  } catch {
-    return null;
+let server: StellarSdk.SorobanRpc.Server | null = null;
+function getServer() {
+  if (!server) {
+    server = new StellarSdk.SorobanRpc.Server(RPC_URL);
   }
+  return server;
 }
 
-export async function getOpenBouts(): Promise<Bout[]> {
-  try {
-    const result = await invokeContract('get_open_bouts', []);
-    return (result as unknown as Bout[]) || [];
-  } catch {
-    return [];
-  }
-}
-
-// Freighter-based signing for actual transactions
 export async function signAndSubmitWithFreighter(
   method: string,
   args: StellarSdk.xdr.ScVal[]
 ): Promise<string> {
-  const freighter = await import('@stellar/freighter-api');
+  if (!CONTRACT_ID) throw new Error('Contract not deployed. Set VITE_SOROBAN_CONTRACT_ID.');
 
-  const server = new StellarSdk.SorobanRpc.Server(RPC_URL);
+  const rpc = getServer();
   const contract = new StellarSdk.Contract(CONTRACT_ID);
-  const address = await freighter.getAddress();
+  const address = await getAddress();
 
-  const account = await server.getAccount(address);
+  const account = await rpc.getAccount(address);
   const txBuilder = new StellarSdk.TransactionBuilder(account, {
     fee: StellarSdk.BASE_FEE,
     networkPassphrase: NETWORK_PASSPHRASE,
   })
     .addOperation(contract.call(method, ...args))
-    .setTimeout(StellarSdk.TimeoutInfinite)
+    .setTimeout(180)
     .build();
 
-  const preparedTx = await server.prepareTransaction(txBuilder);
-  const signedXdr = await freighter.signTransaction(preparedTx.toXDR(), {
+  const preparedTx = await rpc.prepareTransaction(txBuilder);
+  const signedXdr = await signTransaction(preparedTx.toXDR(), {
     networkPassphrase: NETWORK_PASSPHRASE,
   });
 
   const signedTx = StellarSdk.TransactionBuilder.fromXDR(signedXdr, NETWORK_PASSPHRASE);
-  const result = await server.sendTransaction(signedTx);
+  const result = await rpc.sendTransaction(signedTx);
 
   if (result.status === 'ERROR') {
     throw new Error(`Transaction failed: ${JSON.stringify(result)}`);
@@ -151,23 +94,93 @@ export async function signAndSubmitWithFreighter(
   return result.hash;
 }
 
-export async function createBoutWithFreighter(betAmountXlm: number): Promise<any> {
+export async function simulateContract(
+  method: string,
+  args: StellarSdk.xdr.ScVal[]
+): Promise<any> {
+  if (!CONTRACT_ID) throw new Error('Contract not deployed. Set VITE_SOROBAN_CONTRACT_ID.');
+
+  const rpc = getServer();
+  const contract = new StellarSdk.Contract(CONTRACT_ID);
+  const source = await rpc.getAccount('GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF');
+
+  const txBuilder = new StellarSdk.TransactionBuilder(source, {
+    fee: StellarSdk.BASE_FEE,
+    networkPassphrase: NETWORK_PASSPHRASE,
+  })
+    .addOperation(contract.call(method, ...args))
+    .setTimeout(180)
+    .build();
+
+  const simResult = await rpc.simulateTransaction(txBuilder);
+  if (StellarSdk.SorobanRpc.Api.isSimulationError(simResult)) {
+    throw new Error(`Simulation failed: ${simResult.error}`);
+  }
+  return simResult;
+}
+
+// ── PvP Player-vs-Player ────────────────────────────────────────────────────
+export async function createBoutWithFreighter(betAmountXlm: number): Promise<string> {
+  const address = await getAddress();
   return signAndSubmitWithFreighter(
     'create_bout',
-    [toAddress(await (await import('@stellar/freighter-api')).getAddress()), toI128(betAmountXlm)]
+    [toAddress(address), toI128(betAmountXlm)]
   );
 }
 
-export async function acceptBoutWithFreighter(boutId: number): Promise<any> {
+export async function acceptBoutWithFreighter(boutId: number): Promise<string> {
   return signAndSubmitWithFreighter(
     'accept_bout',
-    [toAddress(await (await import('@stellar/freighter-api')).getAddress()), toU64(boutId)]
+    [toU64(boutId)]
   );
 }
 
-export async function submitScoreWithFreighter(boutId: number, score: number): Promise<any> {
+export async function submitScoreWithFreighter(boutId: number, score: number): Promise<string> {
   return signAndSubmitWithFreighter(
     'submit_score',
-    [toAddress(await (await import('@stellar/freighter-api')).getAddress()), toU64(boutId), toU64(score)]
+    [toU64(boutId), toU64(score)]
   );
+}
+
+export async function getBout(boutId: number): Promise<BoutResult | null> {
+  try {
+    await simulateContract('get_bout', [toU64(boutId)]);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getOpenBouts(): Promise<BoutResult[]> {
+  try {
+    await simulateContract('get_open_bouts', []);
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+// ── Bot Betting ─────────────────────────────────────────────────────────────
+export async function createBotBoutWithFreighter(betAmountXlm: number, timeLimit: number): Promise<string> {
+  return signAndSubmitWithFreighter(
+    'create_bot_bout',
+    [toI128(betAmountXlm), toU64(timeLimit)]
+  );
+}
+
+export async function resolveBotBoutWithFreighter(boutId: number, score: number, completionTime: number): Promise<string> {
+  return signAndSubmitWithFreighter(
+    'resolve_bot_bout',
+    [toU64(boutId), toU64(score), toU64(completionTime)]
+  );
+}
+
+// ── Treasury / Admin ────────────────────────────────────────────────────────
+export async function getTreasury(): Promise<number> {
+  try {
+    await simulateContract('get_treasury', []);
+    return 0;
+  } catch {
+    return 0;
+  }
 }
