@@ -1,0 +1,16 @@
+{
+  "short_name": "Stellar RPG",
+  "name": "Chronicles of Stellar - Cyberpunk AI RPG",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#070312",
+  "theme_color": "#00f3ff",
+  "display": "standalone",
+  "orientation": "any"
+}

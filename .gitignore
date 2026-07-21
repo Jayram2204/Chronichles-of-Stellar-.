@@ -16,6 +16,10 @@ dist-ssr
 contracts/*/target
 contracts/**/Cargo.lock
 
+# Environment files (contain secrets)
+web/.env.mainnet
+web/.env.testnet
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

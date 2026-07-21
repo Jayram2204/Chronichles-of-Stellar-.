@@ -1,0 +1,34 @@
+name: Deploy Contract
+
+on:
+  workflow_dispatch:
+    inputs:
+      network:
+        description: "Target network"
+        required: true
+        type: choice
+        options:
+          - testnet
+          - mainnet
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.network }}
+    defaults:
+      run:
+        working-directory: contracts/chronicle-game-state
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - run: cargo build --target wasm32-unknown-unknown --release
+      - name: Deploy to ${{ inputs.network }}
+        env:
+          STELLAR_SECRET_KEY: ${{ secrets.STELLAR_ADMIN_SECRET_KEY }}
+        run: |
+          stellar contract deploy \
+            --wasm target/wasm32-unknown-unknown/release/chronicle_game_state.wasm \
+            --network ${{ inputs.network }} \
+            --source admin

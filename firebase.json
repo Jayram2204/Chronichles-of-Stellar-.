@@ -1,0 +1,26 @@
+{
+  "auth": {
+    "providers": {
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Chronicles of Stellar",
+        "supportEmail": "j24446666688888@gmail.com",
+        "authorizedRedirectUris": ["http://localhost", "https://chronicles-of-stellar.firebaseapp.com"]
+      }
+    }
+  },
+  "hosting": {
+    "public": "web/dist",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
