@@ -19,7 +19,7 @@ export const OverlayHUD: React.FC<OverlayHUDProps> = ({
   gameOver,
 }) => {
   const hpPercent = Math.max(0, (playerHp / playerMaxHp) * 100);
-  const hpColor = hpPercent > 50 ? '#00f3ff' : hpPercent > 25 ? '#ffaa00' : '#ff0055';
+  const hpColor = hpPercent > 50 ? '#8bac0f' : hpPercent > 25 ? '#9bbc0f' : '#306230';
 
   return (
     <>
@@ -32,8 +32,8 @@ export const OverlayHUD: React.FC<OverlayHUDProps> = ({
       {/* In-game overlay HUD - Health bar */}
       <div className="absolute top-2 left-2 pointer-events-none z-20">
         <div className="flex items-center gap-2">
-          <span className="text-[9px] font-mono text-[#00f3ff] font-bold">HP</span>
-          <div className="w-[120px] h-[8px] bg-black/70 border border-[#00f3ff]/30 rounded-sm overflow-hidden">
+          <span className="text-[9px] font-mono text-[#8bac0f] font-bold">HP</span>
+          <div className="w-[120px] h-[8px] bg-black/70 border border-[#8bac0f]/30 rounded-sm overflow-hidden">
             <div
               className="h-full transition-all duration-300 rounded-sm"
               style={{
@@ -51,18 +51,18 @@ export const OverlayHUD: React.FC<OverlayHUDProps> = ({
 
       {/* Score display */}
       <div className="absolute top-2 right-2 pointer-events-none text-right z-20 pr-12">
-        <div className="text-[10px] font-mono text-[#ffaa00] font-bold">SCORE: {score}</div>
-        <div className="text-[9px] font-mono text-[#ff0055]">KILLS: {enemyKills}</div>
+        <div className="text-[10px] font-mono text-[#9bbc0f] font-bold">SCORE: {score}</div>
+        <div className="text-[9px] font-mono text-[#306230]">KILLS: {enemyKills}</div>
       </div>
 
       {/* Level clear banner */}
       {levelClearBanner && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
           <div className="level-clear-banner text-center">
-            <div className="text-2xl font-bold text-[#00f3ff] tracking-widest font-mono drop-shadow-[0_0_20px_rgba(0,243,255,0.8)]">
+            <div className="text-2xl font-bold text-[#8bac0f] tracking-widest font-mono drop-shadow-[0_0_20px_rgba(139,172,15,0.8)]">
               SECTOR CLEARED
             </div>
-            <div className="text-xs text-[#ffaa00] mt-2 font-mono">
+            <div className="text-xs text-[#9bbc0f] mt-2 font-mono">
               +{score} PTS // {enemyKills} NEUTRALIZED
             </div>
           </div>
@@ -73,10 +73,10 @@ export const OverlayHUD: React.FC<OverlayHUDProps> = ({
       {gameOver && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/80 pointer-events-none z-30">
           <div className="text-center">
-            <div className="text-3xl font-bold text-[#ff0055] tracking-widest font-mono drop-shadow-[0_0_20px_rgba(255,0,85,0.8)]">
+            <div className="text-3xl font-bold text-[#306230] tracking-widest font-mono drop-shadow-[0_0_20px_rgba(48,98,48,0.8)]">
               CONNECTION LOST
             </div>
-            <div className="text-xs text-[#857ab3] mt-3 font-mono">
+            <div className="text-xs text-[#527038] mt-3 font-mono">
               // SYSTEM FAILURE — RETRY SECTOR
             </div>
           </div>

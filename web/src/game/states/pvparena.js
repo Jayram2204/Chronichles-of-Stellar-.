@@ -1,5 +1,5 @@
 // pvparena.js
-// PvP Arena - create/accept bouts, play matches
+// PvP Arena - create/accept bouts via Soroban smart contract
 
 import Renderer from './renderer';
 import Globals from '../globals';
@@ -9,8 +9,8 @@ import { EventHub, GameEvents } from '../../events/EventHub';
 
 const PvpArenaConsts = {
   options: [
-    'CREATE BOUT',
-    'JOIN BOUT',
+    'CREATE BOUT (1 XLM)',
+    'JOIN OPEN BOUT',
     'BACK',
   ],
 };
@@ -23,35 +23,65 @@ class PvpArena extends Renderer {
     const screenCenter = this.game.world.centerX;
 
     // Title
-    const title = this.game.add.bitmapText(screenCenter, 20,
-      Globals.bitmapFont, 'PvP ARENA', 18);
+    const title = this.game.add.bitmapText(screenCenter, 12,
+      Globals.bitmapFont, 'PvP ARENA', 14);
     title.anchor.setTo(0.5);
     title.tint = 0xffff00;
 
-    const subtitle = this.game.add.bitmapText(screenCenter, 40,
-      Globals.bitmapFont, 'Bet XLM. Fight. Win.', 8);
+    const subtitle = this.game.add.bitmapText(screenCenter, 28,
+      Globals.bitmapFont, 'BET XLM  FIGHT  WIN', 7);
     subtitle.anchor.setTo(0.5);
     subtitle.tint = 0xaaaaaa;
+
+    // Wallet status
+    this._walletText = this.game.add.bitmapText(screenCenter, 40,
+      Globals.bitmapFont, '', 7);
+    this._walletText.anchor.setTo(0.5);
+    this._walletText.tint = 0x00ff88;
 
     // Menu options
     this.selectedOption = 0;
     this.optionTexts = [];
-    let ypos = 72;
+    const startY = 56;
+    const spacing = 18;
     for (const [i, option] of PvpArenaConsts.options.entries()) {
-      const text = this.game.add.bitmapText(screenCenter, ypos + 20 * i, Globals.bitmapFont, option, 10);
+      const text = this.game.add.bitmapText(screenCenter, startY + i * spacing, Globals.bitmapFont, option, 9);
       text.anchor.setTo(0.5);
       this.optionTexts.push(text);
     }
 
-    // Status text
-    this.statusText = this.game.add.bitmapText(screenCenter, 140,
+    // Status text (bottom area)
+    this.statusText = this.game.add.bitmapText(screenCenter, 120,
       Globals.bitmapFont, '', 7);
     this.statusText.anchor.setTo(0.5);
     this.statusText.tint = 0x888888;
 
+    this._busy = false;
+    this._openBouts = [];
+
     this.audio = new Audio(this.game);
     this.audio.stop();
     this.controls = new Controls(this.game, true);
+
+    this._checkWallet();
+  }
+
+  _checkWallet() {
+    // Dynamically import to avoid circular deps
+    import('../../blockchain/WalletConnector').then(({ walletConnector }) => {
+      const ws = walletConnector.getState();
+      if (ws.isConnected && ws.publicKey) {
+        const short = ws.publicKey.substring(0, 8) + '...' + ws.publicKey.substring(ws.publicKey.length - 4);
+        this._walletText.setText('WALLET: ' + short);
+        this._walletText.tint = 0x00ff88;
+      } else {
+        this._walletText.setText('WALLET NOT CONNECTED');
+        this._walletText.tint = 0xff4444;
+      }
+    }).catch(() => {
+      this._walletText.setText('WALLET: UNAVAILABLE');
+      this._walletText.tint = 0xff4444;
+    });
   }
 
   update() {
@@ -68,6 +98,8 @@ class PvpArena extends Renderer {
   }
 
   handleInput() {
+    if (this._busy) return;
+
     if (this.controls.up) {
       this.selectedOption--;
       this.audio.play(this.audio.sfx.hero.punch, 2);
@@ -76,8 +108,13 @@ class PvpArena extends Renderer {
       this.selectedOption++;
       this.audio.play(this.audio.sfx.hero.punch, 1);
     }
-    else if (this.controls.punch || this.controls.jump || this.controls.kick)
-      this.chooseOption();
+    else if (this.controls.punch || this.controls.jump || this.controls.kick) {
+      // This starts wallet/network work off-tick. Never allow a rejected
+      // promise to bubble out of a Phaser input/update frame.
+      void this.chooseOption().catch((error) => {
+        console.error('[PvpArena] option request failed', error);
+      });
+    }
 
     if (this.selectedOption < 0)
       this.selectedOption = 0;
@@ -85,27 +122,15 @@ class PvpArena extends Renderer {
       this.selectedOption = PvpArenaConsts.options.length - 1;
   }
 
-  chooseOption() {
+  async chooseOption() {
     // Create Bout
     if (this.selectedOption === 0) {
-      this.statusText.setText('Connect wallet first...');
-      this.statusText.tint = 0xffaa00;
-
-      // Emit event for React overlay to handle wallet connection
-      EventHub.emit('PVP_CREATE_REQUEST', {});
-
-      // For now, show instructions
-      this.statusText.setText('Use React overlay to create bout');
+      await this._createBout();
     }
 
-    // Join Bout
+    // Join Open Bout
     if (this.selectedOption === 1) {
-      this.statusText.setText('Connect wallet to join...');
-      this.statusText.tint = 0xffaa00;
-
-      EventHub.emit('PVP_JOIN_REQUEST', {});
-
-      this.statusText.setText('Use React overlay to join bout');
+      await this._joinBout();
     }
 
     // Back
@@ -113,6 +138,100 @@ class PvpArena extends Renderer {
       this.audio.play(this.audio.sfx.hero.punch, 2);
       this.state.start('mainmenu');
     }
+  }
+
+  async _createBout() {
+    this._busy = true;
+    this.statusText.setText('Connecting to contract...');
+    this.statusText.tint = 0xffaa00;
+
+    try {
+      const { createBoutWithFreighter, getContractId } = await import('../../blockchain/PvPEscrow');
+      const contractId = getContractId();
+
+      if (!contractId) {
+        this.statusText.setText('CONTRACT NOT DEPLOYED');
+        this.statusText.tint = 0xff4444;
+        this._busy = false;
+        return;
+      }
+
+      const txHash = await createBoutWithFreighter(1);
+      this.statusText.setText('BOUT CREATED! TX: ' + txHash.substring(0, 10) + '...');
+      this.statusText.tint = 0x00ff88;
+
+      EventHub.emit(GameEvents.TX_CONFIRMED, {
+        action: 'create_bout',
+        txHash: txHash,
+        ledger: 0,
+      });
+    } catch (err) {
+      const msg = String(err.message || err);
+      if (msg.includes('not deployed')) {
+        this.statusText.setText('DEPLOY CONTRACT FIRST');
+      } else if (msg.includes('User declined') || msg.includes('rejected')) {
+        this.statusText.setText('TRANSACTION CANCELLED');
+      } else {
+        this.statusText.setText('ERROR: ' + msg.substring(0, 30));
+      }
+      this.statusText.tint = 0xff4444;
+    }
+
+    this._busy = false;
+  }
+
+  async _joinBout() {
+    this._busy = true;
+    this.statusText.setText('Fetching open bouts...');
+    this.statusText.tint = 0xffaa00;
+
+    try {
+      const { getOpenBouts, acceptBoutWithFreighter, getContractId } = await import('../../blockchain/PvPEscrow');
+      const contractId = getContractId();
+
+      if (!contractId) {
+        this.statusText.setText('CONTRACT NOT DEPLOYED');
+        this.statusText.tint = 0xff4444;
+        this._busy = false;
+        return;
+      }
+
+      const bouts = await getOpenBouts();
+
+      if (!bouts || bouts.length === 0) {
+        this.statusText.setText('NO OPEN BOUTS - CREATE ONE');
+        this.statusText.tint = 0xffaa00;
+        this._busy = false;
+        return;
+      }
+
+      // Auto-join the first open bout
+      const bout = bouts[0];
+      this.statusText.setText('JOINING BOUT #' + bout.id + '...');
+      this.statusText.tint = 0xffaa00;
+
+      const txHash = await acceptBoutWithFreighter(bout.id);
+      this.statusText.setText('JOINED! FIGHT! TX: ' + txHash.substring(0, 10) + '...');
+      this.statusText.tint = 0x00ff88;
+
+      EventHub.emit(GameEvents.TX_CONFIRMED, {
+        action: 'accept_bout',
+        txHash: txHash,
+        ledger: 0,
+      });
+    } catch (err) {
+      const msg = String(err.message || err);
+      if (msg.includes('not deployed')) {
+        this.statusText.setText('DEPLOY CONTRACT FIRST');
+      } else if (msg.includes('User declined') || msg.includes('rejected')) {
+        this.statusText.setText('TRANSACTION CANCELLED');
+      } else {
+        this.statusText.setText('ERROR: ' + msg.substring(0, 30));
+      }
+      this.statusText.tint = 0xff4444;
+    }
+
+    this._busy = false;
   }
 }
 

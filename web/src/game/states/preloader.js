@@ -75,7 +75,7 @@ class Preloader extends Renderer {
 
     // create splash screen
     const splashText = this.game.add.bitmapText(this.game.world.centerX,
-      this.game.world.centerY, Globals.bitmapFont, 'TEAM KICKPUNCH', 20);
+      this.game.world.centerY, Globals.bitmapFont, 'CHRONICLES OF STELLAR', 12);
     splashText.anchor.setTo(0.5);
     splashText.alpha = 0;
 
@@ -85,7 +85,7 @@ class Preloader extends Renderer {
 
     tween.onComplete.add((splashText, tween) => {
       const presentsText = this.game.add.bitmapText(this.game.world.centerX,
-        this.game.world.centerY, Globals.bitmapFont, 'PRESENTS', 18);
+        this.game.world.centerY, Globals.bitmapFont, 'LOADING...', 9);
         presentsText.anchor.setTo(0.5);
         presentsText.alpha = 0;
 

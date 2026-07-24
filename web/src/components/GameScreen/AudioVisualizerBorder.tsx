@@ -33,7 +33,7 @@ export const AudioVisualizerBorder: React.FC = () => {
     <div
       className={`absolute inset-0 pointer-events-none rounded-lg z-20 border-2 transition-all duration-150 ${
         isHitActive
-          ? 'border-[#ff0055] shadow-[0_0_40px_rgba(255,0,85,0.8)] chromatic-hit'
+          ? 'border-[#306230] shadow-[0_0_40px_rgba(48,98,48,0.8)] chromatic-hit'
           : 'synthwave-audio-glow'
       }`}
     >
@@ -42,10 +42,10 @@ export const AudioVisualizerBorder: React.FC = () => {
         {bars.map((heightPct, idx) => (
           <div
             key={idx}
-            className="w-1 bg-[#00f3ff] rounded-t transition-all duration-100"
+            className="w-1 bg-[#8bac0f] rounded-t transition-all duration-100"
             style={{
               height: `${heightPct}%`,
-              backgroundColor: heightPct > 70 ? '#ff0055' : '#00f3ff',
+              backgroundColor: heightPct > 70 ? '#306230' : '#8bac0f',
             }}
           />
         ))}

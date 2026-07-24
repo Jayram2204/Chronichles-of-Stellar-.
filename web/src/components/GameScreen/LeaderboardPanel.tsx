@@ -23,17 +23,17 @@ export const LeaderboardPanel: React.FC = () => {
   }, []);
 
   return (
-    <div className="bg-[#0c051a] border border-[#2d124d] rounded-lg p-4 font-mono shadow-[0_0_20px_rgba(30,11,54,0.6)]">
-      <div className="flex justify-between items-center pb-2 border-b border-[#2d124d]">
+    <div className="bg-[#0f260f] border border-[#2a4a1a] rounded-lg p-4 font-mono shadow-[0_0_20px_rgba(15,38,15,0.6)]">
+      <div className="flex justify-between items-center pb-2 border-b border-[#2a4a1a]">
         <div className="flex items-center gap-2">
-          <span className="text-[#00f3ff]">🏆</span>
-          <span className="text-xs font-bold text-[#00f3ff] uppercase tracking-wider">
+          <span className="text-[#8bac0f]">🏆</span>
+          <span className="text-xs font-bold text-[#8bac0f] uppercase tracking-wider">
             STELLAR GRID HALL OF FAME
           </span>
         </div>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="text-[10px] bg-[#1e0b36] hover:bg-[#2e1252] border border-[#441a7d] text-[#d2c9ff] px-2 py-0.5 rounded transition cursor-pointer font-bold uppercase"
+          className="text-[10px] bg-[#1a3a1a] hover:bg-[#2a4a1a] border border-[#4a6c2a] text-[#e0f8d0] px-2 py-0.5 rounded transition cursor-pointer font-bold uppercase"
         >
           {isOpen ? 'Collapse [-]' : 'Expand Live Top 10 [+]'}
         </button>
@@ -42,7 +42,7 @@ export const LeaderboardPanel: React.FC = () => {
       {isOpen ? (
         <div className="mt-3 space-y-2 text-xs">
           {leaderboard.length === 0 ? (
-            <div className="text-[11px] text-[#857ab3] italic text-center py-2">
+            <div className="text-[11px] text-[#527038] italic text-center py-2">
               Syncing live ledger leaderboards from Cloud Firestore...
             </div>
           ) : (
@@ -54,7 +54,7 @@ export const LeaderboardPanel: React.FC = () => {
                   ? 'text-slate-300 font-bold'
                   : idx === 2
                   ? 'text-amber-600 font-bold'
-                  : 'text-[#a397db]';
+                  : 'text-[#6a8a4a]';
 
               const truncatedUid =
                 player.uid.length > 14
@@ -64,21 +64,21 @@ export const LeaderboardPanel: React.FC = () => {
               return (
                 <div
                   key={player.uid}
-                  className="flex items-center justify-between bg-[#150a29] p-2 rounded border border-[#30165c]/60"
+                  className="flex items-center justify-between bg-[#0a1a0a] p-2 rounded border border-[#3a5c1a]/60"
                 >
                   <div className="flex items-center gap-2">
                     <span className={`w-5 text-center text-xs ${rankColor}`}>#{idx + 1}</span>
-                    <span className="text-white font-semibold">{truncatedUid}</span>
+                    <span className="text-[#e0f8d0] font-semibold">{truncatedUid}</span>
                   </div>
 
                   <div className="flex items-center gap-4 text-[11px]">
-                    <span className="text-[#00f3ff] font-bold">{player.score} PTS</span>
-                    <span className="text-[#ff0055]">{player.kills} KILLS</span>
+                    <span className="text-[#8bac0f] font-bold">{player.score} PTS</span>
+                    <span className="text-[#306230]">{player.kills} KILLS</span>
                     <a
-                      href={`https://explorer.stellar.org/testnet/search?term=${encodeURIComponent(player.uid)}`}
+                      href={`https://explorer.stellar.org/${import.meta.env.VITE_STELLAR_NETWORK === 'PUBLIC' ? 'public' : 'testnet'}/search?term=${encodeURIComponent(player.uid)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[10px] text-[#857ab3] hover:text-[#00f3ff] underline"
+                      className="text-[10px] text-[#527038] hover:text-[#8bac0f] underline"
                     >
                       LEDGER PROOF ↗
                     </a>
@@ -89,9 +89,9 @@ export const LeaderboardPanel: React.FC = () => {
           )}
         </div>
       ) : (
-        <div className="text-[10px] text-[#857ab3] mt-2 flex justify-between">
+        <div className="text-[10px] text-[#527038] mt-2 flex justify-between">
           <span>● REAL-TIME FIRESTORE SYNC ACTIVE</span>
-          <span className="text-[#00f3ff] font-bold">
+          <span className="text-[#8bac0f] font-bold">
             {leaderboard.length > 0 ? `#1 TOP SCORE: ${leaderboard[0].score} PTS` : 'TOP COURIERS LISTED'}
           </span>
         </div>

@@ -1,5 +1,3 @@
-import Phaser from 'phaser-ce';
-
 import {
   Bootstrap,
   Preloader,
@@ -17,11 +15,15 @@ import {
   GameOver
 } from './states';
 
-window.Phaser = Phaser;
-window.PIXI = Phaser.PIXI || window.PIXI || {};
-window.p2 = window.p2 || {};
-
 function createGame(containerId) {
+  const Phaser = window.Phaser;
+  if (!Phaser) {
+    throw new Error('Phaser not loaded. Check /phaser.js script tag in index.html.');
+  }
+
+  window.PIXI = Phaser.PIXI || window.PIXI || {};
+  window.p2 = window.p2 || {};
+
   const game = new Phaser.Game(240, 160, Phaser.AUTO, containerId);
 
   game.state.add('bootstrap', new Bootstrap(game));

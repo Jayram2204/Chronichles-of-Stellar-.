@@ -3,7 +3,7 @@ import HealthBar from '../../ui/components/health-bar';
 import Globals from '../../globals';
 import Actor from '../actor';
 import { Sounds } from './sounds';
-import { EventHub, GameEvents } from '../../../events/EventHub';
+import { emitGameEvent, GameEvents } from '../../../events/EventHub';
 
 const KNOCKBACK = 5;
 
@@ -118,8 +118,7 @@ class Npc extends Actor {
   }
 
   get torso() {
-    // torso
-    return this.hitboxes.children[1];
+    return this.hitboxes && this.hitboxes.children ? this.hitboxes.children[1] : null;
   }
 
   _attachAnimEvents() {
@@ -311,13 +310,13 @@ class Npc extends Actor {
   kill() {
     this.ai.state = AIStates.DEAD;
     this.game.audio.play(this.sfx.death, true);
-    EventHub.emit(GameEvents.ENEMY_DEATH, { type: this.constructor.name });
+    emitGameEvent(GameEvents.ENEMY_DEATH, { type: this.constructor.name });
     super.kill();
   }
 
   update(player, engaging) {
     // update foe's health bar
-    this._healthbar.update();
+    if (this._healthbar) this._healthbar.update();
 
     if (!super.update()) {
       // stop movement, but don't play stand animation
@@ -331,12 +330,16 @@ class Npc extends Actor {
       this.ai.isAttacking = false;
 
       // don't kick a dead horse
-      if (!player.dying && !player.isHit) {
+      if (player && player.sprite && player.torso && player.torso.body &&
+        !player.dying && !player.isHit) {
         const yDist = this.game.math.distanceSq(0, this._sprite.y, 
           0, player.sprite.y);
         if (yDist < 25) { // 5 pixels distance
-          this.game.physics.arcade.collide(this.hitboxes.children[0], 
+          const attackHitbox = this.hitboxes && this.hitboxes.children && this.hitboxes.children[0];
+          if (!attackHitbox || !attackHitbox.body) return false;
+          this.game.physics.arcade.collide(attackHitbox,
             player.torso, (o1, o2) => {
+              if (!player.sprite || !player.sprite.alive) return;
               player.damage(this.ai.DAMAGE, this._sprite.x);
               player.knockBack(this._sprite.x, KNOCKBACK * this.weight);
           });

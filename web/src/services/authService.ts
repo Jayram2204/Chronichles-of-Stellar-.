@@ -5,6 +5,8 @@ import {
   sendSignInLinkToEmail,
   isSignInWithEmailLink,
   signInWithEmailLink,
+  getRedirectResult,
+  signInWithRedirect,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   type User as FirebaseUser,
@@ -28,6 +30,8 @@ export interface UserSession {
   } | null;
 }
 
+type AuthProvider = NonNullable<UserSession['user']>['provider'];
+
 const SESSION_STORAGE_KEY = 'stellar_game_user_session';
 
 class AuthService {
@@ -35,6 +39,11 @@ class AuthService {
     isAuthenticated: false,
     user: null,
   };
+
+  /** Set while an explicit login flow (popup/redirect/email-link) is in
+   *  progress so the background `onAuthStateChanged` observer does not
+   *  create a duplicate session or overwrite a more-specific one. */
+  private _authFlowInProgress = false;
 
   constructor() {
     this.loadSavedSession();
@@ -56,40 +65,71 @@ class AuthService {
   }
 
   private initFirebaseObserver() {
-    onAuthStateChanged(firebaseAuth, async (fbUser: FirebaseUser | null) => {
-      if (fbUser) {
-        console.log('[AuthService] Firebase auth state changed: User signed in:', fbUser.uid);
-        const idToken = await fbUser.getIdToken();
-        const publicKey = await this.deriveStellarPublicKeyFromUID(fbUser.uid);
-
-        const userData = {
-          id: fbUser.uid,
-          name: fbUser.displayName || fbUser.email?.split('@')[0] || 'Authenticated Courier',
-          email: fbUser.email || undefined,
-          publicKey: publicKey,
-          provider: ((fbUser.providerData[0]?.providerId as any) || 'google') as any,
-          avatarUrl: fbUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${fbUser.uid}`,
-          idToken: idToken,
-        };
-
-        this.currentSession = {
-          isAuthenticated: true,
-          user: userData,
-        };
-        this.saveSession();
-
-        // Save off-chain user profile to Cloud Firestore
-        await firestoreService.saveUserProfile({
-          uid: fbUser.uid,
-          displayName: userData.name,
-          email: userData.email,
-          avatarUrl: userData.avatarUrl,
-          provider: userData.provider,
-          publicKey: publicKey,
-          updatedAt: new Date().toISOString(),
+    onAuthStateChanged(
+      firebaseAuth,
+      (fbUser: FirebaseUser | null) => {
+        if (!fbUser) return;
+        // Skip observer-driven session creation while an explicit login
+        // flow is in progress — that flow will call createFirebaseSession
+        // with the correct provider and error handling.
+        if (this._authFlowInProgress) return;
+        void this.createFirebaseSession(fbUser).catch((error) => {
+          console.error('[AuthService] Failed to synchronize Firebase session:', error);
         });
-      }
+      },
+      (error) => {
+        console.error('[AuthService] onAuthStateChanged error:', error);
+      },
+    );
+  }
+
+  private providerFromFirebaseUser(fbUser: FirebaseUser): AuthProvider {
+    switch (fbUser.providerData.find((data) => data.providerId)?.providerId) {
+      case 'google.com': return 'google';
+      case 'apple.com': return 'apple';
+      case 'emailLink':
+      case 'password': return 'email_link';
+      default: return 'google';
+    }
+  }
+
+  private async createFirebaseSession(
+    fbUser: FirebaseUser,
+    provider = this.providerFromFirebaseUser(fbUser)
+  ): Promise<UserSession> {
+    if (this.currentSession.isAuthenticated && this.currentSession.user?.id === fbUser.uid) {
+      return this.currentSession;
+    }
+
+    const idToken = await fbUser.getIdToken();
+    const publicKey = await this.deriveStellarPublicKeyFromUID(fbUser.uid);
+    const userData = {
+      id: fbUser.uid,
+      name: fbUser.displayName || fbUser.email?.split('@')[0] || 'Authenticated Courier',
+      email: fbUser.email || undefined,
+      publicKey,
+      provider,
+      avatarUrl: fbUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${fbUser.uid}`,
+      idToken,
+    };
+
+    this.currentSession = { isAuthenticated: true, user: userData };
+    this.saveSession();
+    await firestoreService.saveUserProfile({
+      uid: fbUser.uid,
+      displayName: userData.name,
+      email: userData.email,
+      avatarUrl: userData.avatarUrl,
+      provider: userData.provider,
+      publicKey,
+      updatedAt: new Date().toISOString(),
     });
+    return this.currentSession;
+  }
+
+  private isPopupFallbackError(err: any): boolean {
+    return ['auth/popup-blocked', 'auth/popup-closed-by-user', 'auth/cancelled-popup-request']
+      .includes(err?.code);
   }
 
   private async deriveStellarPublicKeyFromUID(uid: string): Promise<string> {
@@ -135,110 +175,74 @@ class AuthService {
   }
 
   public async loginWithGoogle(): Promise<UserSession> {
+    this._authFlowInProgress = true;
     try {
       const provider = new GoogleAuthProvider();
       provider.addScope('email');
       provider.addScope('profile');
 
       const result = await signInWithPopup(firebaseAuth, provider);
-      const fbUser = result.user;
-      const idToken = await fbUser.getIdToken();
-      const publicKey = await this.deriveStellarPublicKeyFromUID(fbUser.uid);
-
-      this.currentSession = {
-        isAuthenticated: true,
-        user: {
-          id: fbUser.uid,
-          name: fbUser.displayName || fbUser.email?.split('@')[0] || 'Google Courier',
-          email: fbUser.email || undefined,
-          publicKey: publicKey,
-          provider: 'google',
-          avatarUrl: fbUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${fbUser.uid}`,
-          idToken: idToken,
-        },
-      };
-
-      this.saveSession();
-
-      await firestoreService.saveUserProfile({
-        uid: fbUser.uid,
-        displayName: this.currentSession.user!.name,
-        email: fbUser.email || undefined,
-        avatarUrl: this.currentSession.user!.avatarUrl,
-        provider: 'google',
-        publicKey: publicKey,
-        updatedAt: new Date().toISOString(),
-      });
-
-      return this.currentSession;
+      return await this.createFirebaseSession(result.user, 'google');
     } catch (err: any) {
-      console.error('[AuthService] Google OAuth Popup Error:', err);
+      if (this.isPopupFallbackError(err)) {
+        // Redirect-based fallback for mobile / popup-blocked contexts.
+        // The page will reload; completeRedirectSignIn() picks up the result.
+        const provider = new GoogleAuthProvider();
+        provider.addScope('email');
+        provider.addScope('profile');
+        await signInWithRedirect(firebaseAuth, provider);
+        return this.currentSession;
+      }
+      console.error('[AuthService] Google OAuth Error:', err);
       throw new Error(`Google Sign-In failed: ${err.message || String(err)}`);
+    } finally {
+      this._authFlowInProgress = false;
     }
   }
 
   public async loginWithApple(): Promise<UserSession> {
+    this._authFlowInProgress = true;
     try {
       const provider = new OAuthProvider('apple.com');
       provider.addScope('email');
       provider.addScope('name');
 
       const result = await signInWithPopup(firebaseAuth, provider);
-      const fbUser = result.user;
-      const idToken = await fbUser.getIdToken();
-      const publicKey = await this.deriveStellarPublicKeyFromUID(fbUser.uid);
-
-      this.currentSession = {
-        isAuthenticated: true,
-        user: {
-          id: fbUser.uid,
-          name: fbUser.displayName || 'Apple ID Courier',
-          email: fbUser.email || undefined,
-          publicKey: publicKey,
-          provider: 'apple',
-          avatarUrl: fbUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${fbUser.uid}`,
-          idToken: idToken,
-        },
-      };
-
-      this.saveSession();
-
-      await firestoreService.saveUserProfile({
-        uid: fbUser.uid,
-        displayName: this.currentSession.user!.name,
-        email: fbUser.email || undefined,
-        avatarUrl: this.currentSession.user!.avatarUrl,
-        provider: 'apple',
-        publicKey: publicKey,
-        updatedAt: new Date().toISOString(),
-      });
-
-      return this.currentSession;
+      return await this.createFirebaseSession(result.user, 'apple');
     } catch (err: any) {
+      if (this.isPopupFallbackError(err)) {
+        const provider = new OAuthProvider('apple.com');
+        provider.addScope('email');
+        provider.addScope('name');
+        await signInWithRedirect(firebaseAuth, provider);
+        return this.currentSession;
+      }
       console.error('[AuthService] Apple ID Sign-In Error:', err);
       throw new Error(`Apple ID Sign-In failed: ${err.message || String(err)}`);
+    } finally {
+      this._authFlowInProgress = false;
     }
   }
 
-  public async sendEmailVerificationLink(emailInput: string): Promise<boolean> {
+  public async sendEmailSignInLink(emailInput: string): Promise<boolean> {
     const cleanEmail = emailInput.trim().toLowerCase();
     if (!cleanEmail.includes('@')) {
       throw new Error('Please enter a valid email address.');
     }
 
     const actionCodeSettings = {
-      url: window.location.origin,
+      url: new URL(import.meta.env.BASE_URL, window.location.origin).toString(),
       handleCodeInApp: true,
     };
 
     try {
       await sendSignInLinkToEmail(firebaseAuth, cleanEmail, actionCodeSettings);
       window.localStorage.setItem('emailForSignIn', cleanEmail);
-      console.log(`[AuthService] Real verification link sent to: ${cleanEmail}`);
+      console.log(`[AuthService] Email sign-in link sent to: ${cleanEmail}`);
       return true;
     } catch (err: any) {
-      console.error('[AuthService] Send Email Link Error:', err);
-      throw new Error(`Email verification failed to send: ${err.message || String(err)}`);
+      console.error('[AuthService] Send Email Sign-In Link Error:', err);
+      throw new Error(`Failed to send sign-in link: ${err.message || String(err)}`);
     }
   }
 
@@ -253,43 +257,38 @@ class AuthService {
     }
 
     if (!email) {
-      throw new Error('Email verification requires confirming your email address.');
+      throw new Error('Email address is required to complete sign-in. Please re-open the link from your email.');
     }
 
+    this._authFlowInProgress = true;
     try {
       const result = await signInWithEmailLink(firebaseAuth, email, window.location.href);
       window.localStorage.removeItem('emailForSignIn');
-      const fbUser = result.user;
-      const idToken = await fbUser.getIdToken();
-      const publicKey = await this.deriveStellarPublicKeyFromUID(fbUser.uid);
-
-      this.currentSession = {
-        isAuthenticated: true,
-        user: {
-          id: fbUser.uid,
-          name: email.split('@')[0],
-          email: email,
-          publicKey: publicKey,
-          provider: 'email_link',
-          idToken: idToken,
-        },
-      };
-
-      this.saveSession();
-
-      await firestoreService.saveUserProfile({
-        uid: fbUser.uid,
-        displayName: this.currentSession.user!.name,
-        email: email,
-        provider: 'email_link',
-        publicKey: publicKey,
-        updatedAt: new Date().toISOString(),
-      });
-
-      return this.currentSession;
+      return await this.createFirebaseSession(result.user, 'email_link');
     } catch (err: any) {
-      console.error('[AuthService] Email Link Verification Error:', err);
-      throw new Error(`Email link verification failed: ${err.message || String(err)}`);
+      window.localStorage.removeItem('emailForSignIn');
+      console.error('[AuthService] Email Link Sign-In Error:', err);
+
+      if (err?.code === 'auth/invalid-action-code' || err?.code === 'auth/expired-action-code') {
+        throw new Error('This sign-in link has expired or is invalid. Please request a new link.');
+      }
+      if (err?.code === 'auth/email-already-in-use') {
+        throw new Error('This email is already associated with an account. Try Google or Apple sign-in instead.');
+      }
+      throw new Error(`Sign-in link failed: ${err.message || String(err)}`);
+    } finally {
+      this._authFlowInProgress = false;
+    }
+  }
+
+  public async completeRedirectSignIn(): Promise<UserSession | null> {
+    try {
+      const result = await getRedirectResult(firebaseAuth);
+      if (!result) return null;
+      return await this.createFirebaseSession(result.user);
+    } catch (err: any) {
+      console.error('[AuthService] Redirect sign-in error:', err);
+      throw new Error(`Redirect sign-in failed: ${err.message || String(err)}`);
     }
   }
 

@@ -28,22 +28,28 @@ class Renderer {
     this.game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
     this.game.scale.pageAlignHorizontally = true;
     this.game.scale.pageAlignVertically = true;
+    this.game.scale.minWidth = 240;
+    this.game.scale.minHeight = 160;
 
     this.game.renderer.renderSession.roundPixels = true;
     Phaser.Canvas.setImageRenderingCrisp(this.game.canvas);
 
     window.addEventListener('resize', () => this.setScale());
-    this.setScale();
+    requestAnimationFrame(() => this.setScale());
   }
 
   setScale() {
     const parent = this.game.canvas.parentElement;
     if (!parent) return;
-    const width = parent.clientWidth || 720;
-    const height = parent.clientHeight || 480;
+    const width = parent.clientWidth;
+    const height = parent.clientHeight;
+    if (!width || !height) return;
 
-    let scale = height / this.game.height;
-    if (width < height * (240 / 160)) {
+    const gameAspect = this.game.width / this.game.height;
+    let scale;
+    if (width / height > gameAspect) {
+      scale = height / this.game.height;
+    } else {
       scale = width / this.game.width;
     }
     this.game.scale.setUserScale(scale, scale);

@@ -16,8 +16,8 @@ class CharSelect extends Renderer {
     const screenCenter = this.game.world.centerX;
 
     // Title
-    const title = this.game.add.bitmapText(screenCenter, 12,
-      Globals.bitmapFont, 'SELECT FIGHTER', 14);
+    const title = this.game.add.bitmapText(screenCenter, 8,
+      Globals.bitmapFont, 'SELECT FIGHTER', 12);
     title.anchor.setTo(0.5);
 
     // Character list
@@ -26,17 +26,18 @@ class CharSelect extends Renderer {
     this.statTexts = [];
     this.previewSprite = null;
 
-    const startY = 34;
+    const startY = 28;
+    const rowHeight = 18;
     for (let i = 0; i < CHAR_KEYS.length; i++) {
       const key = CHAR_KEYS[i];
       const char = Globals.CHARACTERS[key];
 
-      const nameText = this.game.add.bitmapText(screenCenter, startY + i * 20,
+      const nameText = this.game.add.bitmapText(screenCenter - 40, startY + i * rowHeight,
         Globals.bitmapFont, char.name, 9);
-      nameText.anchor.setTo(0.5);
+      nameText.anchor.setTo(0, 0.5);
       this.charTexts.push(nameText);
 
-      const statText = this.game.add.bitmapText(screenCenter + 60, startY + i * 20,
+      const statText = this.game.add.bitmapText(screenCenter + 40, startY + i * rowHeight,
         Globals.bitmapFont, char.role, 7);
       statText.anchor.setTo(0, 0.5);
       statText.tint = 0x888888;
@@ -44,13 +45,13 @@ class CharSelect extends Renderer {
     }
 
     // Stats panel
-    this.statsPanel = this.game.add.bitmapText(screenCenter, 138,
+    this.statsPanel = this.game.add.bitmapText(screenCenter, 128,
       Globals.bitmapFont, '', 7);
     this.statsPanel.anchor.setTo(0.5);
     this.statsPanel.tint = 0xcccccc;
 
     // Preview sprite
-    this.previewSprite = this.game.add.sprite(screenCenter, 95, 'atlas_sprites', 'hero_stand_01');
+    this.previewSprite = this.game.add.sprite(screenCenter, 88, 'atlas_sprites', 'hero_stand_01');
     this.previewSprite.anchor.setTo(0.5);
     this.previewSprite.scale.set(2);
 

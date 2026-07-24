@@ -1,0 +1,61 @@
+// NOTE: This firestore.rules provides display-layer protection for off-chain player stats and leaderboards.
+// It does NOT protect on-chain state or contract logic — reputation and smart contract payouts are managed entirely on-chain on Stellar/Soroban.
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isValidStatNumber(num) {
+      return num is int && num >= 0 && num <= 100000;
+    }
+
+    // Leaderboard collection: public read, authenticated owner write with bounds check
+    match /leaderboards/{uid} {
+      allow read: if true;
+      allow write: if isOwner(uid) &&
+        (!('score' in request.resource.data) || isValidStatNumber(request.resource.data.score)) &&
+        (!('enemyKills' in request.resource.data) || isValidStatNumber(request.resource.data.enemyKills)) &&
+        (!('kills' in request.resource.data) || isValidStatNumber(request.resource.data.kills));
+    }
+
+    // Users collection and subcollections (profile, stats, dialogues)
+    match /users/{uid} {
+      allow read: if true;
+      allow write: if isOwner(uid);
+
+      match /stats/{statId} {
+        allow read: if true;
+        allow write: if isOwner(uid) &&
+          (!('score' in request.resource.data) || isValidStatNumber(request.resource.data.score)) &&
+          (!('enemyKills' in request.resource.data) || isValidStatNumber(request.resource.data.enemyKills)) &&
+          (!('kills' in request.resource.data) || isValidStatNumber(request.resource.data.kills));
+      }
+
+      match /dialogues/{npcId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // PlayerStats collection (fallback/alias)
+    match /playerStats/{uid} {
+      allow read: if true;
+      allow write: if isOwner(uid) &&
+        (!('score' in request.resource.data) || isValidStatNumber(request.resource.data.score)) &&
+        (!('enemyKills' in request.resource.data) || isValidStatNumber(request.resource.data.enemyKills)) &&
+        (!('kills' in request.resource.data) || isValidStatNumber(request.resource.data.kills));
+    }
+
+    // Bounties collection
+    match /bounties/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+  }
+}

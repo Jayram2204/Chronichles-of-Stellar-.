@@ -8,6 +8,7 @@ export interface DynamicPlayerContext {
   playerLevel: number;
   currentAct: number;
   inventory: string[];
+  hasKeycard: boolean;
   enemyKills: number;
   score: number;
 }
@@ -49,6 +50,7 @@ Sector / Level: ${context.playerLevel}
 Player Reputation: ${context.reputationScore} / 100
 Player Combat Score: ${context.score} (Neutralized Foes: ${context.enemyKills})
 Player Cargo Inventory: ${context.inventory.join(', ') || 'None'}
+Player Has A.E.O.N. Passkey: ${context.hasKeycard}
 Reputation Threshold Required by NPC: ${npc.reputationRequired}
 ${pastHistoryText}
 === AUTONOMOUS BEHAVIOR RULES ===

@@ -146,18 +146,20 @@ class AgentBridge {
           }
         } else if (npcId === 'guard') {
           if (p.includes('pass') || p.includes('open') || p.includes('firewall') || p.includes('gate')) {
-            if (context.reputationScore >= 50) {
-              responseText = `[Grid Sentinel Guard 09]: Clearance score (${context.reputationScore}/100) authorized. Lowering firewall barriers.`;
+            if (!context.hasKeycard) {
+              responseText = `[Grid Sentinel Guard 09]: Clearance denied. You need an A.E.O.N. Passkey before I can lower the firewall.`;
+              decision = 'deny';
+            } else if (context.reputationScore >= 50) {
+              responseText = `[Grid Sentinel Guard 09]: Clearance score (${context.reputationScore}/100) authorized. Passkey verified. Lowering firewall barriers.`;
               decision = 'approve';
               mutateState = 'open_firewall';
             } else {
               responseText = `[Grid Sentinel Guard 09]: Clearance denied. Required reputation is 50, but your current score is ${context.reputationScore}.`;
               decision = 'deny';
             }
-          } else if (p.includes('bribe') || p.includes('pay') || p.includes('credits')) {
-            responseText = `[Grid Sentinel Guard 09]: Credit transfer accepted. Lowering firewall barriers.`;
-            decision = 'approve';
-            mutateState = 'open_firewall';
+          } else {
+            responseText = `[Grid Sentinel Guard 09]: Sector 09 firewall is sealed. Present valid credentials.`;
+            decision = 'neutral';
           }
         } else if (npcId === 'informant') {
           if (p.includes('intel') || p.includes('data') || p.includes('info')) {

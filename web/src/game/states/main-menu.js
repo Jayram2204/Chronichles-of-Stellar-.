@@ -27,12 +27,12 @@ class MainMenu extends Renderer {
 
     this.playIntro(screenCenter);
 
-    // create a text for each option
     this.selectedOption = 0;
     this.optionTexts = [];
-    let ypos = this.game.world.height / MainMenuConsts.options.length + 24;
+    const startY = 56;
+    const spacing = 18;
     for(const [i, option] of MainMenuConsts.options.entries()) {
-      const text = this.game.add.bitmapText(screenCenter, ypos + 24 * i, Globals.bitmapFont, option, 12);
+      const text = this.game.add.bitmapText(screenCenter, startY + i * spacing, Globals.bitmapFont, option, 10);
       text.anchor.setTo(0.5);
       this.optionTexts.push(text);
     }
@@ -47,17 +47,18 @@ class MainMenu extends Renderer {
   playIntro(screenCenter) {
     const SPEED = 2000;
 
-    const menuTitleLeft = this.game.add.bitmapText(screenCenter, 30, 
-      Globals.bitmapFont, 'Chronicles', 24);
+    const menuTitleLeft = this.game.add.bitmapText(screenCenter, 20, 
+      Globals.bitmapFont, 'CHRONICLES', 16);
     menuTitleLeft.anchor.setTo(0.5);
     menuTitleLeft.right = 0;
     this.game.add.tween(menuTitleLeft).to({ x: screenCenter - 2}, SPEED, 
       Phaser.Easing.Bounce.Out, true);
 
-    const menuTitleRight = this.game.add.bitmapText(screenCenter, 30, 
-      Globals.bitmapFont, 'of Stellar', 16);
+    const menuTitleRight = this.game.add.bitmapText(screenCenter, 36, 
+      Globals.bitmapFont, 'OF STELLAR', 12);
     menuTitleRight.anchor.setTo(0.5);
     menuTitleRight.left = this.game.width;
+    menuTitleRight.tint = 0xcccccc;
     this.game.add.tween(menuTitleRight).to({ x: screenCenter + 2}, SPEED, 
       Phaser.Easing.Bounce.Out, true);
   }

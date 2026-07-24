@@ -90,6 +90,7 @@ export const TerminalUI: React.FC<TerminalUIProps> = ({
           playerLevel: currentLevel,
           currentAct,
           inventory,
+          hasKeycard: inventory.includes('A.E.O.N. Passkey'),
           enemyKills,
           score,
         },
@@ -103,19 +104,19 @@ export const TerminalUI: React.FC<TerminalUIProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-[280px] bg-[#0c051a] border border-[#2d124d] rounded-lg overflow-hidden font-mono shadow-[0_0_15px_rgba(30,11,54,0.5)]">
+    <div className="flex flex-col h-[280px] bg-[#0f260f] border border-[#2a4a1a] rounded-lg overflow-hidden font-mono shadow-[0_0_15px_rgba(15,38,15,0.5)]">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 bg-[#1b0b2e] border-b border-[#2d124d] text-xs text-[#00f3ff] uppercase tracking-wider font-bold">
+      <div className="flex items-center justify-between px-3 py-2 bg-[#142e14] border-b border-[#2a4a1a] text-xs text-[#8bac0f] uppercase tracking-wider font-bold">
         <span className="flex items-center gap-2">
           <span>{npcDef.avatarIcon}</span>
           <span>{npcDef.name}</span>
-          <span className="text-[9px] text-[#a397db] font-normal">({npcDef.sector})</span>
+          <span className="text-[9px] text-[#6a8a4a] font-normal">({npcDef.sector})</span>
         </span>
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={handleToggleMute}
-            className="text-[10px] text-[#a397db] hover:text-[#00f3ff] transition cursor-pointer font-normal uppercase"
+            className="text-[10px] text-[#6a8a4a] hover:text-[#8bac0f] transition cursor-pointer font-normal uppercase"
             title="Toggle Cyberware Neural Voice Audio"
           >
             {isMuted ? '🔇 VOICE MUTED' : '🔊 VOICE ONLINE'}
@@ -129,17 +130,17 @@ export const TerminalUI: React.FC<TerminalUIProps> = ({
       </div>
 
       {/* Feed */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 text-xs text-[#d2c9ff]">
+      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 text-xs text-[#e0f8d0]">
         {logs.map((log, index) => {
           let prefix = '';
-          let colorClass = 'text-[#b8adff]';
+          let colorClass = 'text-[#6a8a4a]';
 
           if (log.sender === 'player') {
             prefix = '> COURIER:';
-            colorClass = 'text-[#00f3ff] font-semibold';
+            colorClass = 'text-[#8bac0f] font-semibold';
           } else if (log.sender === 'npc') {
             prefix = `> [${npcDef.name.toUpperCase()}]:`;
-            colorClass = 'text-[#ff0055] font-semibold';
+            colorClass = 'text-[#306230] font-semibold';
           } else if (log.sender === 'system') {
             prefix = '';
             colorClass = 'text-amber-500/80 italic';
@@ -150,9 +151,9 @@ export const TerminalUI: React.FC<TerminalUIProps> = ({
               key={index}
               className={`leading-relaxed border-l-2 pl-2 ${
                 log.sender === 'player'
-                  ? 'border-[#00f3ff]/40'
+                  ? 'border-[#8bac0f]/40'
                   : log.sender === 'npc'
-                  ? 'border-[#ff0055]/40'
+                  ? 'border-[#306230]/40'
                   : 'border-amber-500/40'
               }`}
             >
@@ -166,7 +167,7 @@ export const TerminalUI: React.FC<TerminalUIProps> = ({
         })}
 
         {isPendingAI && (
-          <div className="flex items-center gap-1 text-[#00f3ff] italic pl-2 border-l-2 border-[#00f3ff]/20">
+          <div className="flex items-center gap-1 text-[#8bac0f] italic pl-2 border-l-2 border-[#8bac0f]/20">
             <span>[GEMINI AI AGENT COMPUTING]</span>
             <span className="animate-bounce">.</span>
             <span className="animate-bounce delay-100">.</span>
@@ -175,7 +176,7 @@ export const TerminalUI: React.FC<TerminalUIProps> = ({
         )}
 
         {isSyncing && (
-          <div className="text-[#ff0055] italic pl-2 border-l-2 border-[#ff0055]/20 animate-pulse">
+          <div className="text-[#306230] italic pl-2 border-l-2 border-[#306230]/20 animate-pulse">
             // SUBMITTING REAL-TIME SMART CONTRACT MUTATION TO STELLAR NETWORK...
           </div>
         )}
@@ -184,7 +185,7 @@ export const TerminalUI: React.FC<TerminalUIProps> = ({
       </div>
 
       {/* Input form */}
-      <form onSubmit={handleSubmit} className="flex border-t border-[#2d124d]">
+      <form onSubmit={handleSubmit} className="flex border-t border-[#2a4a1a]">
         <input
           type="text"
           value={inputVal}
@@ -197,12 +198,12 @@ export const TerminalUI: React.FC<TerminalUIProps> = ({
               ? 'WAITING FOR AI AGENT DECISION...'
               : 'ENTER DIRECTIVE (e.g. "Buy passkey", "Lower firewall")...'
           }
-          className="flex-1 bg-[#090314] px-3 py-2 text-xs text-white focus:outline-none placeholder-purple-900/60 disabled:opacity-50"
+          className="flex-1 bg-[#060c06] px-3 py-2 text-xs text-[#e0f8d0] focus:outline-none placeholder-[#3a5c1a]/60 disabled:opacity-50"
         />
         <button
           type="submit"
           disabled={!inputVal.trim() || isPendingAI || isSyncing}
-          className="bg-[#2a0e4e] hover:bg-[#3d166e] text-[#00f3ff] px-4 text-xs font-bold transition disabled:opacity-30 disabled:hover:bg-[#2a0e4e] uppercase border-l border-[#2d124d]"
+          className="bg-[#1a3a1a] hover:bg-[#2a4a1a] text-[#8bac0f] px-4 text-xs font-bold transition disabled:opacity-30 disabled:hover:bg-[#1a3a1a] uppercase border-l border-[#2a4a1a]"
         >
           EXECUTE
         </button>

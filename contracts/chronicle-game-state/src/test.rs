@@ -342,7 +342,7 @@ fn test_resolve_bot_bout_high_score() {
     env.mock_all_auths();
     client.set_treasury(&admin, &500_000_000);
     let bot = client.create_bot_bout(&player, &10_000_000, &300);
-    let resolved = client.resolve_bot_bout(&bot.id, &1500, &100);
+    let resolved = client.resolve_bot_bout(&player, &bot.id, &1500, &100);
     assert_eq!(resolved.status, BotBoutStatus::Completed);
     assert_eq!(resolved.payout, 30_000_000);
     let ps = client.get_player(&player);
@@ -357,7 +357,7 @@ fn test_resolve_bot_bout_medium_score() {
     env.mock_all_auths();
     client.set_treasury(&admin, &500_000_000);
     let bot = client.create_bot_bout(&player, &10_000_000, &300);
-    let resolved = client.resolve_bot_bout(&bot.id, &600, &200);
+    let resolved = client.resolve_bot_bout(&player, &bot.id, &600, &200);
     assert_eq!(resolved.payout, 20_000_000);
 }
 
@@ -367,7 +367,7 @@ fn test_resolve_bot_bout_low_score_no_payout() {
     env.mock_all_auths();
     client.set_treasury(&admin, &500_000_000);
     let bot = client.create_bot_bout(&player, &10_000_000, &300);
-    let resolved = client.resolve_bot_bout(&bot.id, &100, &200);
+    let resolved = client.resolve_bot_bout(&player, &bot.id, &100, &200);
     assert_eq!(resolved.payout, 0);
 }
 
@@ -377,7 +377,18 @@ fn test_resolve_bot_bout_already_resolved_fails() {
     env.mock_all_auths();
     client.set_treasury(&admin, &500_000_000);
     let bot = client.create_bot_bout(&player, &10_000_000, &300);
-    client.resolve_bot_bout(&bot.id, &600, &200);
-    let result = client.try_resolve_bot_bout(&bot.id, &600, &200);
+    client.resolve_bot_bout(&player, &bot.id, &600, &200);
+    let result = client.try_resolve_bot_bout(&player, &bot.id, &600, &200);
     assert_eq!(result, Err(Ok(GameError::BoutAlreadyResolved)));
+}
+
+#[test]
+fn test_resolve_bot_bout_wrong_player_fails() {
+    let (env, admin, player, client) = setup_with_player();
+    env.mock_all_auths();
+    let other = Address::generate(&env);
+    client.set_treasury(&admin, &500_000_000);
+    let bot = client.create_bot_bout(&player, &10_000_000, &300);
+    let result = client.try_resolve_bot_bout(&other, &bot.id, &600, &200);
+    assert_eq!(result, Err(Ok(GameError::Unauthorized)));
 }

@@ -12,12 +12,12 @@ class Credits extends Renderer {
 
     const creditsTitle = this.addText(
       'CREDITS',
-      this.game.world.centerX, 24, 24
+      this.game.world.centerX, 16, 14
     );
 
     creditsTitle.anchor.setTo(0.5);
 
-    const columnsTop = 45;
+    const columnsTop = 36;
 
     const column1Left = 5;
     const column1Padding = column1Left + 5;
@@ -26,20 +26,20 @@ class Credits extends Renderer {
     const column2Padding = this.game.world.width / 2;
 
     this.addText('Producer:', column1Left, columnsTop);
-    this.addText('Petar Petrov', column1Padding, columnsTop + 15);
+    this.addText('Petar Petrov', column1Padding, columnsTop + 12);
 
-    this.addText('Audio Designer:', column1Left, columnsTop + 45);
-    this.addText('Will Tonna', column1Padding, columnsTop + 60);
+    this.addText('Audio Designer:', column1Left, columnsTop + 32);
+    this.addText('Will Tonna', column1Padding, columnsTop + 44);
 
     this.addText('Visuals:', column2Left, columnsTop);
     this.addText(
       'Petar Petrov\nPavel Antonov',
-      column2Padding, columnsTop + 15);
+      column2Padding, columnsTop + 12);
 
-    this.addText('Programmers:', column2Left, columnsTop + 45);
+    this.addText('Programmers:', column2Left, columnsTop + 32);
     this.addText(
       `Alexey Vishnyakov\nCarlos Braga\nPetar Petrov`,
-      column2Padding, columnsTop + 60);
+      column2Padding, columnsTop + 44);
 
     // leave text
     const leaveText = this.game.add.bitmapText(this.game.world.centerX, 155, 

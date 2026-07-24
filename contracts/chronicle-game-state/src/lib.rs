@@ -573,16 +573,21 @@ impl ChronicleGameState {
 
     pub fn resolve_bot_bout(
         env: Env,
+        player: Address,
         bout_id: u32,
         player_score: u32,
         completion_time: u64,
     ) -> Result<BotBout, GameError> {
+        player.require_auth();
         let key = DataKey::BotBout(bout_id);
         let mut bout: BotBout = env
             .storage()
             .persistent()
             .get(&key)
             .ok_or(GameError::BoutNotFound)?;
+        if bout.player != player {
+            return Err(GameError::Unauthorized);
+        }
         if bout.status != BotBoutStatus::Active {
             return Err(GameError::BoutAlreadyResolved);
         }

@@ -13,9 +13,9 @@ export const WalletPanel: React.FC<WalletPanelProps> = ({
   onDisconnect,
 }) => {
   return (
-    <div className="bg-[#0c051a] border border-[#2d124d] rounded-lg p-4 font-mono shadow-[0_0_15px_rgba(30,11,54,0.4)]">
+    <div className="bg-[#0f260f] border border-[#2a4a1a] rounded-lg p-4 font-mono shadow-[0_0_15px_rgba(15,38,15,0.4)]">
       <div className="flex justify-between items-center mb-3">
-        <span className="text-xs font-bold text-[#a397db]">🌐 DECENTRALIZED IDENTITY</span>
+        <span className="text-xs font-bold text-[#6a8a4a]">🌐 DECENTRALIZED IDENTITY</span>
         <span
           className={`text-[10px] px-2 py-0.5 rounded font-bold ${
             wallet.isConnected
@@ -29,18 +29,18 @@ export const WalletPanel: React.FC<WalletPanelProps> = ({
 
       {wallet.isConnected ? (
         <div className="space-y-2">
-          <div className="text-xs text-[#d2c9ff] flex justify-between bg-[#150a29] p-2 rounded border border-[#230f3f] overflow-hidden">
+          <div className="text-xs text-[#e0f8d0] flex justify-between bg-[#0a1a0a] p-2 rounded border border-[#2a4a1a] overflow-hidden">
             <span>Public Key:</span>
             <span
-              className="text-[#00f3ff] text-[10px] self-center truncate max-w-[200px]"
+              className="text-[#8bac0f] text-[10px] self-center truncate max-w-[200px]"
               title={wallet.publicKey || ''}
             >
               {wallet.publicKey}
             </span>
           </div>
-          <div className="flex justify-between items-center text-xs text-[#d2c9ff] px-2">
+          <div className="flex justify-between items-center text-xs text-[#e0f8d0] px-2">
             <span>Account Balance:</span>
-            <span className="text-[#ff0055] font-bold">{wallet.balance} XLM</span>
+            <span className="text-[#306230] font-bold">{wallet.balance} XLM</span>
           </div>
           <button
             onClick={onDisconnect}
@@ -51,10 +51,10 @@ export const WalletPanel: React.FC<WalletPanelProps> = ({
         </div>
       ) : (
         <div className="text-center py-2">
-          <p className="text-xs text-[#857ab3] mb-3">Connect via Freighter or Stellar extension wallet.</p>
+          <p className="text-xs text-[#527038] mb-3">Connect via Freighter or Stellar extension wallet.</p>
           <button
             onClick={onConnect}
-            className="w-full bg-[#00f3ff] hover:bg-[#33f5ff] text-black text-xs font-bold py-2 rounded transition uppercase tracking-wider shadow-[0_0_10px_rgba(0,243,255,0.4)] cursor-pointer"
+            className="w-full bg-[#9bbc0f] hover:bg-[#a8cc1a] text-black text-xs font-bold py-2 rounded transition uppercase tracking-wider shadow-[0_0_10px_rgba(139,172,15,0.4)] cursor-pointer"
           >
             Connect Wallet
           </button>

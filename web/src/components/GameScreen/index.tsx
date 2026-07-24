@@ -60,6 +60,22 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onSessionUpdate }) => {
     };
   }, []);
 
+  useEffect(() => {
+    const setKeyboardEnabled = (event: Event) => {
+      const enabled = (event as CustomEvent<{ enabled?: boolean }>).detail?.enabled;
+      const keyboard = phaserGameRef.current?.input?.keyboard;
+      if (!keyboard || typeof enabled !== 'boolean') return;
+
+      // Reset avoids a movement/action key remaining pressed when focus moves
+      // between React inputs and Phaser's global keyboard listener.
+      keyboard.reset(false);
+      keyboard.enabled = enabled;
+    };
+
+    window.addEventListener('stellar-game-keyboard', setKeyboardEnabled);
+    return () => window.removeEventListener('stellar-game-keyboard', setKeyboardEnabled);
+  }, []);
+
   // Auto-open AI Comm-Link terminal when walking near an NPC
   useEffect(() => {
     if (activeNpc.id && wallet.isConnected) {
@@ -69,28 +85,15 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onSessionUpdate }) => {
 
   return (
     <div
-      className={`relative w-full max-w-[1240px] aspect-[3/2] min-h-[520px] max-h-[780px] bg-black border-4 border-[#1e0b36] rounded-2xl overflow-hidden shadow-[0_0_60px_rgba(30,11,54,0.9)] font-mono select-none ${
+      className={`flex flex-col w-full max-w-[1240px] bg-black border-4 border-[#1a3a1a] rounded-2xl overflow-hidden shadow-[0_0_60px_rgba(15,38,15,0.9)] font-mono select-none ${
         damageFlash ? 'damage-flash' : ''
       }`}
     >
-      {/* Primary Fullscreen Phaser Game Canvas */}
-      <ErrorBoundary fallbackTitle="Phaser Engine Fault">
-        <div id="game-container" className="w-full h-full" />
-        <OverlayHUD
-          playerHp={playerHp}
-          playerMaxHp={playerMaxHp}
-          score={score}
-          enemyKills={enemyKills}
-          levelClearBanner={levelClearBanner}
-          gameOver={gameOver}
-        />
-      </ErrorBoundary>
-
-      {/* Minimal Floating Web3 HUD Toolbar */}
-      <div className="absolute top-3 left-3 right-3 flex justify-between items-center z-30 pointer-events-auto">
+      {/* Web3 HUD Toolbar — sits ABOVE the canvas */}
+      <div className="w-full flex justify-between items-center bg-[#0f260f]/90 backdrop-blur-md px-3 py-2 border-b border-[#2a4a1a] z-30 shrink-0">
         {/* Left Status Pill */}
-        <div className="flex items-center gap-2 bg-[#0c051a]/90 backdrop-blur-md px-3 py-1.5 border border-[#2d124d] rounded-lg text-xs text-[#00f3ff] shadow">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        <div className="flex items-center gap-2 text-xs text-[#8bac0f]">
+          <span className="w-2 h-2 rounded-full bg-[#8bac0f] animate-pulse" />
           <span className="font-bold">ACT {currentAct} // SECTOR 0{currentLevel}</span>
         </div>
 
@@ -100,8 +103,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onSessionUpdate }) => {
             onClick={() => setActiveOverlayTab(activeOverlayTab === 'terminal' ? 'none' : 'terminal')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition border shadow cursor-pointer ${
               activeOverlayTab === 'terminal'
-                ? 'bg-[#00f3ff] text-black border-[#00f3ff]'
-                : 'bg-[#0c051a]/90 text-[#00f3ff] border-[#2d124d] hover:bg-[#1f0a3d]'
+                ? 'bg-[#9bbc0f] text-black border-[#9bbc0f]'
+                : 'bg-[#0f260f]/90 text-[#8bac0f] border-[#2a4a1a] hover:bg-[#1a2e1a]'
             }`}
           >
             💬 AI Comm-Link {activeNpc.id ? '🔴' : ''}
@@ -111,8 +114,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onSessionUpdate }) => {
             onClick={() => setActiveOverlayTab(activeOverlayTab === 'bounties' ? 'none' : 'bounties')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition border shadow cursor-pointer ${
               activeOverlayTab === 'bounties'
-                ? 'bg-[#ffaa00] text-black border-[#ffaa00]'
-                : 'bg-[#0c051a]/90 text-[#ffaa00] border-[#2d124d] hover:bg-[#1f0a3d]'
+                ? 'bg-[#9bbc0f] text-black border-[#9bbc0f]'
+                : 'bg-[#0f260f]/90 text-[#9bbc0f] border-[#2a4a1a] hover:bg-[#1a2e1a]'
             }`}
           >
             🎯 Bounties
@@ -122,8 +125,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onSessionUpdate }) => {
             onClick={() => setActiveOverlayTab(activeOverlayTab === 'leaderboard' ? 'none' : 'leaderboard')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition border shadow cursor-pointer ${
               activeOverlayTab === 'leaderboard'
-                ? 'bg-[#d2c9ff] text-black border-[#d2c9ff]'
-                : 'bg-[#0c051a]/90 text-[#d2c9ff] border-[#2d124d] hover:bg-[#1f0a3d]'
+                ? 'bg-[#e0f8d0] text-black border-[#e0f8d0]'
+                : 'bg-[#0f260f]/90 text-[#e0f8d0] border-[#2a4a1a] hover:bg-[#1a2e1a]'
             }`}
           >
             🏆 Rankings
@@ -133,8 +136,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onSessionUpdate }) => {
             onClick={() => setActiveOverlayTab(activeOverlayTab === 'wallet' ? 'none' : 'wallet')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition border shadow cursor-pointer ${
               activeOverlayTab === 'wallet'
-                ? 'bg-emerald-400 text-black border-emerald-400'
-                : 'bg-[#0c051a]/90 text-emerald-400 border-[#2d124d] hover:bg-[#1f0a3d]'
+                ? 'bg-[#8bac0f] text-black border-[#8bac0f]'
+                : 'bg-[#0f260f]/90 text-[#8bac0f] border-[#2a4a1a] hover:bg-[#1a2e1a]'
             }`}
           >
             🌐 Ledger Wallet
@@ -142,95 +145,111 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onSessionUpdate }) => {
         </div>
       </div>
 
-      {/* Floating Overlay Drawer Viewport */}
-      {activeOverlayTab !== 'none' && (
-        <div className="absolute top-14 right-3 w-[420px] max-h-[80%] bg-[#0c051a]/95 backdrop-blur-md border-2 border-[#00f3ff] rounded-xl p-4 z-40 shadow-[0_0_40px_rgba(0,243,255,0.4)] space-y-3 overflow-y-auto pointer-events-auto">
-          <div className="flex justify-between items-center pb-2 border-b border-[#2d124d]">
-            <span className="text-xs font-bold text-[#00f3ff] uppercase">
-              {activeOverlayTab === 'terminal' && '💬 AI NEURAL COMM-LINK'}
-              {activeOverlayTab === 'bounties' && '🎯 DAILY CONTRACT BOUNTIES'}
-              {activeOverlayTab === 'leaderboard' && '🏆 STELLAR HALL OF FAME'}
-              {activeOverlayTab === 'wallet' && '🌐 STELLAR WALLET & REPUTATION'}
-              {activeOverlayTab === 'ledger' && '📜 ON-CHAIN TRANSACTION LOGS'}
-            </span>
-            <button
-              onClick={() => setActiveOverlayTab('none')}
-              className="text-xs text-[#857ab3] hover:text-white px-2 py-0.5 bg-[#1e0a36] border border-[#441a7d] rounded font-bold cursor-pointer"
-            >
-              ✕ CLOSE
-            </button>
-          </div>
+      {/* Canvas Container — strict 3:2 aspect ratio */}
+      <div className="relative w-full aspect-[3/2] min-h-0">
+        {/* Phaser Game Canvas */}
+        <ErrorBoundary fallbackTitle="Phaser Engine Fault">
+          <div id="game-container" className="w-full h-full" />
+          <OverlayHUD
+            playerHp={playerHp}
+            playerMaxHp={playerMaxHp}
+            score={score}
+            enemyKills={enemyKills}
+            levelClearBanner={levelClearBanner}
+            gameOver={gameOver}
+          />
+        </ErrorBoundary>
 
-          {activeOverlayTab === 'terminal' && (
-            <ErrorBoundary fallbackTitle="Terminal UI Error">
-              {wallet.isConnected ? (
-                activeNpc.id ? (
-                  <TerminalUI
-                    npcId={activeNpc.id}
-                    npcName={activeNpc.name || 'NPC'}
-                    reputationScore={reputation}
-                    currentLevel={currentLevel}
-                    currentAct={currentAct}
-                    inventory={inventory}
-                    enemyKills={enemyKills}
-                    score={score}
-                    isSyncing={isSyncing}
-                  />
+        {/* Floating Overlay Drawer Viewport */}
+        {activeOverlayTab !== 'none' && (
+          <div className="absolute top-2 right-2 w-[420px] max-h-[80%] bg-[#0f260f]/95 backdrop-blur-md border-2 border-[#8bac0f] rounded-xl p-4 z-40 shadow-[0_0_40px_rgba(139,172,15,0.4)] space-y-3 overflow-y-auto pointer-events-auto">
+            <div className="flex justify-between items-center pb-2 border-b border-[#2a4a1a]">
+              <span className="text-xs font-bold text-[#8bac0f] uppercase">
+                {activeOverlayTab === 'terminal' && '💬 AI NEURAL COMM-LINK'}
+                {activeOverlayTab === 'bounties' && '🎯 DAILY CONTRACT BOUNTIES'}
+                {activeOverlayTab === 'leaderboard' && '🏆 STELLAR HALL OF FAME'}
+                {activeOverlayTab === 'wallet' && '🌐 STELLAR WALLET & REPUTATION'}
+                {activeOverlayTab === 'ledger' && '📜 ON-CHAIN TRANSACTION LOGS'}
+              </span>
+              <button
+                onClick={() => setActiveOverlayTab('none')}
+                className="text-xs text-[#527038] hover:text-[#e0f8d0] px-2 py-0.5 bg-[#1a3a1a] border border-[#4a6c2a] rounded font-bold cursor-pointer"
+              >
+                ✕ CLOSE
+              </button>
+            </div>
+
+            {activeOverlayTab === 'terminal' && (
+              <ErrorBoundary fallbackTitle="Terminal UI Error">
+                {wallet.isConnected ? (
+                  activeNpc.id ? (
+                    <TerminalUI
+                      npcId={activeNpc.id}
+                      npcName={activeNpc.name || 'NPC'}
+                      reputationScore={reputation}
+                      currentLevel={currentLevel}
+                      currentAct={currentAct}
+                      inventory={inventory}
+                      enemyKills={enemyKills}
+                      score={score}
+                      isSyncing={isSyncing}
+                    />
+                  ) : (
+                    <div className="flex flex-col justify-center items-center h-[240px] text-center text-xs text-[#527038]">
+                      <span className="text-[#8bac0f] text-lg mb-2">📡 SCANNING FOR COMM-LINK</span>
+                      <span>Walk closer to an entity in the game world to open direct secure neural communication.</span>
+                    </div>
+                  )
                 ) : (
-                  <div className="flex flex-col justify-center items-center h-[240px] text-center text-xs text-[#857ab3]">
-                    <span className="text-[#00f3ff] text-lg mb-2">📡 SCANNING FOR COMM-LINK</span>
-                    <span>Walk closer to an entity in the game world to open direct secure neural communication.</span>
+                  <div className="flex flex-col justify-center items-center h-[240px] text-center text-xs text-[#306230]">
+                    <span className="text-lg mb-2">🔒 COMM-LINK SHIELDED</span>
+                    <span>Connect Stellar wallet to enable decryption channels and speak with autonomous AI agents.</span>
                   </div>
-                )
-              ) : (
-                <div className="flex flex-col justify-center items-center h-[240px] text-center text-xs text-[#ff0055]">
-                  <span className="text-lg mb-2">🔒 COMM-LINK SHIELDED</span>
-                  <span>Connect Stellar wallet to enable decryption channels and speak with autonomous AI agents.</span>
-                </div>
-              )}
-            </ErrorBoundary>
-          )}
+                )}
+              </ErrorBoundary>
+            )}
 
-          {activeOverlayTab === 'bounties' && (
-            <ErrorBoundary fallbackTitle="Bounty Board Error">
-              <BountyBoardPanel />
-            </ErrorBoundary>
-          )}
+            {activeOverlayTab === 'bounties' && (
+              <ErrorBoundary fallbackTitle="Bounty Board Error">
+                <BountyBoardPanel />
+              </ErrorBoundary>
+            )}
 
-          {activeOverlayTab === 'leaderboard' && (
-            <ErrorBoundary fallbackTitle="Leaderboard Error">
-              <LeaderboardPanel />
-            </ErrorBoundary>
-          )}
+            {activeOverlayTab === 'leaderboard' && (
+              <ErrorBoundary fallbackTitle="Leaderboard Error">
+                <LeaderboardPanel />
+              </ErrorBoundary>
+            )}
 
-          {activeOverlayTab === 'wallet' && (
-            <ErrorBoundary fallbackTitle="Wallet Status Error">
-              <WalletPanel
-                wallet={wallet}
-                onConnect={handleConnectWallet}
-                onDisconnect={handleDisconnectWallet}
-              />
-              <div className="mt-3">
-                <CourierStatus
-                  playerHp={playerHp}
-                  playerMaxHp={playerMaxHp}
-                  reputation={reputation}
-                  score={score}
-                  enemyKills={enemyKills}
-                  currentLevel={currentLevel}
-                  inventory={inventory}
+            {activeOverlayTab === 'wallet' && (
+              <ErrorBoundary fallbackTitle="Wallet Status Error">
+                <WalletPanel
+                  wallet={wallet}
+                  onConnect={handleConnectWallet}
+                  onDisconnect={handleDisconnectWallet}
                 />
-              </div>
-            </ErrorBoundary>
-          )}
+                <div className="mt-3">
+                  <CourierStatus
+                    playerHp={playerHp}
+                    playerMaxHp={playerMaxHp}
+                    reputation={reputation}
+                    score={score}
+                    enemyKills={enemyKills}
+                    currentLevel={currentLevel}
+                    inventory={inventory}
+                  />
+                </div>
+              </ErrorBoundary>
+            )}
 
-          {activeOverlayTab === 'ledger' && (
-            <ErrorBoundary fallbackTitle="Ledger History Error">
-              <LedgerHistory logs={ledgerLogs} />
-            </ErrorBoundary>
-          )}
-        </div>
-      )}
+            {activeOverlayTab === 'ledger' && (
+              <ErrorBoundary fallbackTitle="Ledger History Error">
+                <LedgerHistory logs={ledgerLogs} />
+              </ErrorBoundary>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

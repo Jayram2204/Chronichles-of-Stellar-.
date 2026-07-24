@@ -2,6 +2,24 @@ import EventEmitter from 'eventemitter3';
 
 export const EventHub = new EventEmitter();
 
+/**
+ * EventEmitter listeners run synchronously.  Phaser invokes combat callbacks
+ * from its update step, so a UI listener that throws must never be allowed to
+ * escape back into `game.step()` and leave the last rendered frame onscreen.
+ *
+ * Use this for notifications produced by the game loop.  Deferring the
+ * dispatch also keeps React state updates out of the physics tick.
+ */
+export function emitGameEvent(event: string, payload?: unknown): void {
+  setTimeout(() => {
+    try {
+      EventHub.emit(event, payload);
+    } catch (error) {
+      console.error(`[EventHub] listener failed for "${event}"`, error);
+    }
+  }, 0);
+}
+
 export const GameEvents = {
   INTERACT_TRIGGER: 'interact_trigger',
   PLAYER_DAMAGE: 'player_damage',

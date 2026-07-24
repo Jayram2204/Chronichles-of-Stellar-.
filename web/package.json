@@ -4,8 +4,11 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "postinstall": "cp node_modules/phaser-ce/build/phaser.js public/phaser.js",
+    "dev": "vite --mode testnet",
+    "dev:mainnet": "vite --mode mainnet",
+    "build": "tsc -b && vite build --mode testnet",
+    "build:mainnet": "tsc -b && vite build --mode mainnet",
     "lint": "oxlint",
     "preview": "vite preview"
   },
@@ -17,7 +20,7 @@
     "buffer": "^6.0.3",
     "eventemitter3": "^5.0.4",
     "firebase": "^12.16.0",
-    "phaser-ce": "^2.13.0",
+    "phaser-ce": "2.20.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "tailwindcss": "^4.3.2"

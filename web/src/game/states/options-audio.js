@@ -26,16 +26,17 @@ class OptionsAudio extends Renderer {
 
     const screenCenter = this.game.world.centerX;
 
-    const menuTitle = this.game.add.bitmapText(screenCenter, 30,
-      Globals.bitmapFont, 'KickPunch', 30);
+    const menuTitle = this.game.add.bitmapText(screenCenter, 20,
+      Globals.bitmapFont, 'AUDIO', 14);
     menuTitle.anchor.setTo(0.5);
 
     // create a text for each option
     this.selectedOption = 0;
     this.optionTexts = [];
-    let ypos = this.game.world.height / AudioMenuConsts.options.length + 24;
+    const startY = 56;
+    const spacing = 18;
     for (const [i, option] of AudioMenuConsts.options.entries()) {
-      const text = this.game.add.bitmapText(screenCenter, ypos + 24 * i, Globals.bitmapFont, option, 12);
+      const text = this.game.add.bitmapText(screenCenter, startY + i * spacing, Globals.bitmapFont, option, 10);
       text.anchor.setTo(0.5);
       this.optionTexts.push(text);
     }

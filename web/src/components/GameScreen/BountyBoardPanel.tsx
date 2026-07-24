@@ -25,17 +25,17 @@ export const BountyBoardPanel: React.FC = () => {
   }, []);
 
   return (
-    <div className="bg-[#0c051a] border border-[#2d124d] rounded-lg p-4 font-mono shadow-[0_0_20px_rgba(30,11,54,0.6)]">
-      <div className="flex justify-between items-center pb-2 border-b border-[#2d124d]">
+    <div className="bg-[#0f260f] border border-[#2a4a1a] rounded-lg p-4 font-mono shadow-[0_0_20px_rgba(15,38,15,0.6)]">
+      <div className="flex justify-between items-center pb-2 border-b border-[#2a4a1a]">
         <div className="flex items-center gap-2">
-          <span className="text-[#ffaa00]">🎯</span>
-          <span className="text-xs font-bold text-[#ffaa00] uppercase tracking-wider">
+          <span className="text-[#9bbc0f]">🎯</span>
+          <span className="text-xs font-bold text-[#9bbc0f] uppercase tracking-wider">
             DAILY AI BOUNTY CONTRACTS
           </span>
         </div>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="text-[10px] bg-[#1e0b36] hover:bg-[#2e1252] border border-[#441a7d] text-[#d2c9ff] px-2 py-0.5 rounded transition cursor-pointer font-bold uppercase"
+          className="text-[10px] bg-[#1a3a1a] hover:bg-[#2e1252] border border-[#4a6c2a] text-[#e0f8d0] px-2 py-0.5 rounded transition cursor-pointer font-bold uppercase"
         >
           {isOpen ? 'Collapse [-]' : 'View Bounties (3) [+]'}
         </button>
@@ -52,37 +52,37 @@ export const BountyBoardPanel: React.FC = () => {
                 className={`p-3 rounded border transition ${
                   bounty.isCompleted
                     ? 'bg-emerald-950/40 border-emerald-700/60 text-emerald-300'
-                    : 'bg-[#150a29] border-[#30165c] text-[#d2c9ff]'
+                    : 'bg-[#0a1a0a] border-[#3a5c1a] text-[#e0f8d0]'
                 }`}
               >
                 <div className="flex justify-between items-start mb-1">
-                  <span className="font-bold text-white text-[11px]">{bounty.title}</span>
+                  <span className="font-bold text-[#e0f8d0] text-[11px]">{bounty.title}</span>
                   <span
                     className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
-                      bounty.isCompleted ? 'bg-emerald-900 text-emerald-200' : 'bg-[#230f3f] text-[#00f3ff]'
+                      bounty.isCompleted ? 'bg-emerald-900 text-emerald-200' : 'bg-[#2a4a1a] text-[#8bac0f]'
                     }`}
                   >
                     {bounty.isCompleted ? '✓ COMPLETED' : `PROGRESS: ${bounty.currentCount}/${bounty.targetCount}`}
                   </span>
                 </div>
 
-                <p className="text-[10px] text-[#a397db] leading-relaxed mb-2">{bounty.description}</p>
+                <p className="text-[10px] text-[#6a8a4a] leading-relaxed mb-2">{bounty.description}</p>
 
                 {/* Progress bar */}
-                <div className="w-full bg-[#090314] h-1.5 rounded-full overflow-hidden mb-2 border border-[#2d124d]">
+                <div className="w-full bg-[#060c06] h-1.5 rounded-full overflow-hidden mb-2 border border-[#2a4a1a]">
                   <div
                     className={`h-full transition-all duration-300 ${
-                      bounty.isCompleted ? 'bg-emerald-400' : 'bg-[#00f3ff]'
+                      bounty.isCompleted ? 'bg-[#8bac0f]' : 'bg-[#8bac0f]'
                     }`}
                     style={{ width: `${pct}%` }}
                   />
                 </div>
 
-                <div className="flex justify-between items-center text-[10px] text-[#857ab3]">
+                <div className="flex justify-between items-center text-[10px] text-[#527038]">
                   <span>REWARDS:</span>
                   <div className="flex gap-2">
-                    <span className="text-[#00f3ff] font-bold">+{bounty.rewardReputation} REP</span>
-                    <span className="text-[#ffaa00] font-bold">+{bounty.rewardCredits} CREDITS</span>
+                    <span className="text-[#8bac0f] font-bold">+{bounty.rewardReputation} REP</span>
+                    <span className="text-[#9bbc0f] font-bold">+{bounty.rewardCredits} CREDITS</span>
                   </div>
                 </div>
               </div>
@@ -90,9 +90,9 @@ export const BountyBoardPanel: React.FC = () => {
           })}
         </div>
       ) : (
-        <div className="text-[10px] text-[#857ab3] mt-2 flex justify-between">
+        <div className="text-[10px] text-[#527038] mt-2 flex justify-between">
           <span>● 24H GEMINI CONTRACT REFRESH</span>
-          <span className="text-[#ffaa00] font-bold">
+          <span className="text-[#9bbc0f] font-bold">
             {bounties.filter((b) => b.isCompleted).length} / 3 CONTRACTS COMPLETED
           </span>
         </div>

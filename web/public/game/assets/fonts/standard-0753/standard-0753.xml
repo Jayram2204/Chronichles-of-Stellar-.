@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <font>
-<info face="standard 07_53" size="32" bold="0" italic="0" charset="" unicode="0" stretchH="100" smooth="1" aa="1" padding="1,1,1,1" spacing="-2,-2"  />
+<info face="standard 07_53" size="32" bold="0" italic="0" charset="" unicode="0" stretchH="100" smooth="1" aa="1" padding="1,1,1,1" spacing="1,1"  />
 <common lineHeight="44" base="36" scaleW="512" scaleH="512" pages="1" packed="0"  />
 <pages>
 <page id="0" file="standard-0753.png" />

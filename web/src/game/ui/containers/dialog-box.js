@@ -18,10 +18,11 @@ class DialogBox {
     this._dialog = dialog;
     this._listener = listener;
 
+    const boxHeight = Math.floor(game.height * 0.45);
     const boxSprite = this.game.add.graphics();
     boxSprite.beginFill(Phaser.Color.hexToRGB(Globals.palette.background.hex),  1)
              .lineStyle(3, Phaser.Color.hexToRGB(Globals.palette.bricks1.hex), 1)
-             .drawRect(0, 0, game.width - 3, game.height / 3)
+             .drawRect(0, 0, game.width - 3, boxHeight)
              .endFill();
 
     const boxSpriteTexture = boxSprite.generateTexture();
@@ -29,6 +30,8 @@ class DialogBox {
     this._boxSprite.fixedToCamera = true;
     this._boxSprite.anchor.setTo(0, 1);
     this._boxSprite.scale.setTo(0.02, 0);
+
+    this._boxHeight = boxHeight;
 
     // add some fancy effects
     const spanwidth = this.game.add.tween(this._boxSprite.scale).to({ x: 1 }, 500, Phaser.Easing.Linear.None, true, 500);
@@ -58,15 +61,14 @@ class DialogBox {
 
     this._currentLine = 0;
     this._currentLetter = 0;
-    //this.bitmapText = this.game.add.bitmapText(5, this._boxSprite.top + 5,
-    this.bitmapText = this.game.add.bitmapText(5, this.game.height - 50,
+    const textY = this.game.height - this._boxHeight + 8;
+    this.bitmapText = this.game.add.bitmapText(5, textY,
       Globals.bitmapFont, '', DialogBoxConsts.TEXT_SIZE);
     this.bitmapText.maxWidth = wrapwidth * 3;
     this.bitmapText.fixedToCamera = true;
 
     if (!this.nameText) {
-      // this.nameText = this.game.add.bitmapText(2, this._boxSprite.top - 16,
-      this.nameText = this.game.add.bitmapText(5, this.game.height - 68,
+      this.nameText = this.game.add.bitmapText(5, textY - 16,
         Globals.bitmapFont, this._name, DialogBoxConsts.TEXT_SIZE - 1);
       this.nameText.fixedToCamera = true;
     }
@@ -139,7 +141,9 @@ class DialogBox {
   update() {
     if(this.controls != null &&
       (this.controls.punch || this.controls.jump || this.controls.kick)) {
-      // stop current writing
+      // stop current writing — NOTE: game.time.events is a global Phaser Timer,
+      // so destroy() clears ALL pending timers (combo, spawn, etc.). This is a
+      // known Phaser CE limitation. See audit report section 6.
       this.game.time.events.destroy();
 
       // reset text to empty

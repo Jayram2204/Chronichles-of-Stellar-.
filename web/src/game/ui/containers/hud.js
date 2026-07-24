@@ -24,26 +24,26 @@ class Hud {
     this._charName = game.add.bitmapText(12, 22, Globals.bitmapFont,
       charData.name.toUpperCase(), 7);
     this._charName.fixedToCamera = true;
-    this._charName.tint = charData.tint !== 0xffffff ? charData.tint : 0xcccccc;
+    this._charName.tint = 0xcccccc;
 
     // score display (top right)
-    this._scoreLabel = game.add.bitmapText(game.width - 4, 8, Globals.bitmapFont, 'SCORE', 6);
+    this._scoreLabel = game.add.bitmapText(game.width - 4, 8, Globals.bitmapFont, 'SCORE', 7);
     this._scoreLabel.anchor.setTo(1, 0);
     this._scoreLabel.fixedToCamera = true;
     this._scoreLabel.tint = 0x888888;
 
-    this._scoreText = game.add.bitmapText(game.width - 4, 16, Globals.bitmapFont, '0', 10);
+    this._scoreText = game.add.bitmapText(game.width - 4, 18, Globals.bitmapFont, '0', 9);
     this._scoreText.anchor.setTo(1, 0);
     this._scoreText.fixedToCamera = true;
     this._scoreText.tint = 0xffff00;
 
     // kills display (below score)
-    this._killsLabel = game.add.bitmapText(game.width - 4, 28, Globals.bitmapFont, 'KILLS', 6);
+    this._killsLabel = game.add.bitmapText(game.width - 4, 30, Globals.bitmapFont, 'KILLS', 7);
     this._killsLabel.anchor.setTo(1, 0);
     this._killsLabel.fixedToCamera = true;
     this._killsLabel.tint = 0x888888;
 
-    this._killsText = game.add.bitmapText(game.width - 4, 36, Globals.bitmapFont, '0', 10);
+    this._killsText = game.add.bitmapText(game.width - 4, 40, Globals.bitmapFont, '0', 9);
     this._killsText.anchor.setTo(1, 0);
     this._killsText.fixedToCamera = true;
     this._killsText.tint = 0xff4444;
@@ -87,7 +87,7 @@ class Hud {
 
     // boss name
     this._bossName = this.game.add.bitmapText(this.game.width / 2, y - 2,
-      Globals.bitmapFont, bossName || 'BOSS', 7);
+      Globals.bitmapFont, bossName || 'BOSS', 8);
     this._bossName.anchor.setTo(0.5, 1);
     this._bossName.fixedToCamera = true;
     this._bossName.tint = 0xff4444;

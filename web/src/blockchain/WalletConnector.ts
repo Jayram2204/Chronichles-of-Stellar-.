@@ -1,4 +1,4 @@
-import { isConnected, getAddress, getNetwork } from '@stellar/freighter-api';
+import { isConnected, requestAccess, getNetwork } from '@stellar/freighter-api';
 import { Horizon } from '@stellar/stellar-sdk';
 import { EventHub, GameEvents } from '../events/EventHub';
 
@@ -40,14 +40,34 @@ class WalletConnector {
 
       if (freighterAvailable) {
         console.log('[WalletConnector] Freighter extension detected. Connecting...');
-        const addrRes = await getAddress();
+        // `getAddress` only works after the site is already on Freighter's
+        // allow-list. `requestAccess` performs that first-time approval flow
+        // and returns the selected account.
+        const addrRes = await Promise.race([
+          requestAccess(),
+          new Promise<{ address: string; error?: string }>((_, reject) =>
+            setTimeout(() => reject(new Error('Freighter popup timed out after 15s. Please approve the connection in the Freighter extension.')), 15_000)
+          ),
+        ]);
         if (addrRes.error) {
           throw new Error(`Freighter connection error: ${addrRes.error}`);
         }
 
-        const publicKey = addrRes.address;
+        const publicKey = addrRes.address && addrRes.address.trim();
+        if (!publicKey) {
+          throw new Error('Approve this site in Freighter and select an account to continue.');
+        }
+
         const netRes = await getNetwork();
-        const networkName = netRes?.network || NETWORK_PASSPHRASE;
+        if (netRes.error) {
+          throw new Error(`Unable to read the Freighter network: ${netRes.error}`);
+        }
+        if (netRes.network && netRes.network !== NETWORK_NAME) {
+          throw new Error(
+            `Freighter is set to ${netRes.network}; switch it to ${NETWORK_NAME} and try again.`
+          );
+        }
+        const networkName = netRes.network || NETWORK_NAME;
 
         this.state = {
           isConnected: true,
@@ -68,6 +88,9 @@ class WalletConnector {
       if (windowStellar) {
         console.log('[WalletConnector] Generic Stellar window provider detected.');
         const { address } = await windowStellar.getPublicKey();
+        if (!address) {
+          throw new Error('The Stellar wallet did not provide an account address.');
+        }
         this.state = {
           isConnected: true,
           publicKey: address,

@@ -12,6 +12,6 @@ export default defineConfig({
     }
   },
   optimizeDeps: {
-    include: ['phaser-ce']
+    include: []
   }
 })

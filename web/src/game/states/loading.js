@@ -90,7 +90,7 @@ class Loading extends Renderer {
       this.game.add.tween(sub).to({ alpha: 1 }, 800, Phaser.Easing.Linear.None, true, 400);
     }
 
-    this.text = this.game.add.bitmapText(this.game.world.centerX, this.game.world.centerY + 8, Globals.bitmapFont, '', 12);
+    this.text = this.game.add.bitmapText(this.game.world.centerX, this.game.world.centerY + 8, Globals.bitmapFont, '', 9);
     this.text.anchor.setTo(0.5);
 
     this.timer.start();
@@ -98,7 +98,7 @@ class Loading extends Renderer {
 
   update() {
     if(this.timer.running)
-      this.text.text = 'LOADING...\n\t\t\t\t\t\t' + (LoadingConsts.LOAD_TIME - Math.round(this.timer.ms / 1000));
+      this.text.text = 'LOADING... ' + (LoadingConsts.LOAD_TIME - Math.round(this.timer.ms / 1000));
     else
       this.text.text = 'LOADED!';
 
@@ -109,7 +109,7 @@ class Loading extends Renderer {
   loadComplete() {
     const skipText = this.game.add.bitmapText(this.game.world.centerX, 
       this.game.world.height - 8, 
-      Globals.bitmapFont, 'Press Punch or Kick to skip', 12);
+      Globals.bitmapFont, 'Press Punch or Kick to skip', 8);
     skipText.anchor.setTo(0.5);
     skipText.alpha = 0;
 

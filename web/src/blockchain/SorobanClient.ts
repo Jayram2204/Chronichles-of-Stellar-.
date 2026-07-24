@@ -36,7 +36,7 @@ const NETWORK_PASSPHRASE =
 const SOROBAN_RPC_URL =
   import.meta.env.VITE_SOROBAN_RPC_URL ||
   (import.meta.env.VITE_STELLAR_NETWORK === 'PUBLIC'
-    ? 'https://mainnet.stellar.validationcloud.io/v1/rpc'
+    ? 'https://mainnet.sorobanrpc.com'
     : 'https://soroban-testnet.stellar.org');
 
 const CONTRACT_ID = import.meta.env.VITE_SOROBAN_CONTRACT_ID || '';

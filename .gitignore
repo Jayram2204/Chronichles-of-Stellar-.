@@ -8,9 +8,12 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+node_modules/
 dist
 dist-ssr
 *.local
+web/public/phaser.js
+package-lock.json
 
 # Rust/Soroban build artifacts
 contracts/*/target
@@ -30,3 +33,5 @@ web/.env.testnet
 *.njsproj
 *.sln
 *.sw?
+.env.admin
+.firebase/

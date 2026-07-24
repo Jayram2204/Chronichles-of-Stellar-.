@@ -2,7 +2,7 @@
 import Globals from '../../globals';
 import Controls from '../../controls';
 import Actor from '../actor';
-import { EventHub, GameEvents } from '../../../events/EventHub';
+import { emitGameEvent, GameEvents } from '../../../events/EventHub';
 
 const HeroConsts = {
   PUNCH_DAMAGE: 10,
@@ -139,8 +139,7 @@ class Hero extends Actor {
   }
 
   get torso() {
-    // torso
-    return this.hitboxes.children[2];
+    return this.hitboxes && this.hitboxes.children ? this.hitboxes.children[2] : null;
   }
 
   _attachAnimEvents() {
@@ -184,7 +183,7 @@ class Hero extends Actor {
 
   heal(amount) {
     super.heal(amount);
-    EventHub.emit(GameEvents.PLAYER_HEAL, {
+    emitGameEvent(GameEvents.PLAYER_HEAL, {
       hp: this._sprite.health,
       maxHp: this._sprite.maxHealth
     });
@@ -192,13 +191,13 @@ class Hero extends Actor {
 
   damage(amount) {
     if (super.damage(amount)) {
-      EventHub.emit(GameEvents.GAME_OVER);
+      emitGameEvent(GameEvents.GAME_OVER);
       this.kill();
     } else {
       this.stop(null)
       this._sprite.animations.play('hit');
 
-      EventHub.emit(GameEvents.PLAYER_DAMAGE, {
+      emitGameEvent(GameEvents.PLAYER_DAMAGE, {
         hp: this._sprite.health,
         maxHp: this._sprite.maxHealth,
         damage: amount
@@ -285,26 +284,38 @@ class Hero extends Actor {
     if (this.state.checkHits !== HeroConsts.NO_HIT && !this.state.isHit) {
       // test against punch or kick hit box
       // XXX don't use array indexes but constants or object names
+      const hitboxChildren = this.hitboxes && this.hitboxes.children;
       let hitbox;
       if (this.state.checkHits === HeroConsts.PUNCH_HIT) {
-        hitbox = this.hitboxes.children[0];
+        hitbox = hitboxChildren && hitboxChildren[0];
       } else {
-        hitbox = this.hitboxes.children[1];
+        hitbox = hitboxChildren && hitboxChildren[1];
       }
 
-      // reset test
+      // Always consume the hit check, including when setup/teardown has
+      // removed a hitbox. Otherwise a bad entity can repeatedly fault every
+      // frame after a state transition.
       this.state.checkHits = HeroConsts.NO_HIT;
 
-      // hit test enemies
-      for (const actor of enemies) {
-        if (!actor.hit && !actor.dead) {
+      if (hitbox && hitbox.body && Array.isArray(enemies)) {
+        // hit test enemies
+        for (const actor of enemies) {
+          if (!actor || actor.hit || actor.dead || !actor.sprite ||
+            !actor.torso || !actor.torso.body ||
+            typeof actor.damage !== 'function' || typeof actor.knockBack !== 'function') {
+            continue;
+          }
+
           // only register hits at enemies in close proximity
           const yDist = this.game.math.distanceSq(0, this._sprite.y,
             0, actor.sprite.y);
           if (yDist < 16) { // 4 pixels distance
-            game.physics.arcade.collide(hitbox, actor.torso, (o1, o2) => {
-              actor.damage(this.state.damage);
-              actor.knockBack(this._sprite.x, this.state.knockback);
+            game.physics.arcade.collide(hitbox, actor.torso, () => {
+              // Collision callbacks may run after an enemy was killed by a
+              // previous overlap in this same physics step.
+              if (actor.dead || !actor.sprite || !actor.sprite.alive) return;
+              actor.damage(this.state.damage || 0);
+              actor.knockBack(this._sprite.x, this.state.knockback || 0);
             });
           }
         }

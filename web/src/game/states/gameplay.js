@@ -11,7 +11,7 @@ import {
 } from '../entities';
 import DialogBox from '../ui/containers/dialog-box';
 import Hud from '../ui/containers/hud';
-import { EventHub, GameEvents } from '../../events/EventHub';
+import { EventHub, emitGameEvent, GameEvents } from '../../events/EventHub';
 
 const TileMapConsts = {
   TILE_SIZE: 48,
@@ -171,16 +171,16 @@ class GamePlay extends Renderer {
         sessionStorage.setItem('playerHealth', this.player.sprite.health);
       }
 
-      EventHub.emit(GameEvents.LEVEL_CHANGED, { level: this._level });
-      EventHub.emit(GameEvents.LEVEL_CLEARED, {
+      emitGameEvent(GameEvents.LEVEL_CHANGED, { level: this._level });
+      emitGameEvent(GameEvents.LEVEL_CLEARED, {
         score: this.totalScore,
         kills: this.totalKills
       });
 
       if (act === 'act2') {
-        EventHub.emit(GameEvents.ACT_COMPLETED, { act: 1 });
+        emitGameEvent(GameEvents.ACT_COMPLETED, { act: 1 });
       } else if (act === 'act5') {
-        EventHub.emit(GameEvents.ACT_COMPLETED, { act: 2 });
+        emitGameEvent(GameEvents.ACT_COMPLETED, { act: 2 });
       }
 
       this.state.start('loading', true, false, act)
@@ -458,14 +458,19 @@ class GamePlay extends Renderer {
   }
 
   updatePlayerCollisions(sprite) {
+    if (!sprite || !sprite.body || !Array.isArray(this.collectables)) return;
     this.physics.arcade.collide(sprite, this.collectables, (o1, o2) => {
+      if (!o2 || !o2.alive || !this.player) return;
       const food = TileMapConsts.COLLECTABLES[o2.name];
-      this.specialFx.textdraw.fadingUp(o2.x, o2.y, food.text);
+      if (!food) return;
+      if (this.specialFx && this.specialFx.textdraw) {
+        this.specialFx.textdraw.fadingUp(o2.x, o2.y, food.text);
+      }
       // 'eat' that food
       o2.destroy();
       this.player.heal(food.hp);
       // play sfx
-      this.audio.play(this.audio.sfx.foodpickup);
+      if (this.audio && this.audio.sfx) this.audio.play(this.audio.sfx.foodpickup);
     });
   }
 
@@ -473,11 +478,13 @@ class GamePlay extends Renderer {
     let result = [];
 
     let engagedCount = this.enemies.reduce(
-      (s, actor) => s += actor.engaged ? 1 : 0,
+      (s, actor) => s += actor && actor.engaged ? 1 : 0,
     0);
 
     for (const actor of this.enemies) {
-      if (actor.isCanEngage(engagedCount) &&
+      if (actor && actor.sprite && typeof actor.isCanEngage === 'function' &&
+        typeof actor.isInEngageRange === 'function' && this.player && this.player.sprite &&
+        actor.isCanEngage(engagedCount) &&
         actor.isInEngageRange(this.player.sprite.x, this.player.sprite.y)) {
 
         actor.engaged = true;
@@ -495,10 +502,22 @@ class GamePlay extends Renderer {
   }
 
   update() {
-    super.update();
+    // A single bad sprite or external listener must not terminate Phaser's
+    // state update. Keep the remaining frame work isolated and report enough
+    // context to identify the offending subsystem.
+    const guard = (label, work) => {
+      try {
+        return work();
+      } catch (error) {
+        console.error(`[GamePlay.update] ${label} failed`, error);
+        return undefined;
+      }
+    };
+
+    guard('renderer', () => super.update());
 
     if(this.dialogBox) {
-      this.dialogBox.update();
+      guard('dialog box', () => this.dialogBox.update());
       if(this.dialogBox.active)
         return;
 
@@ -508,7 +527,7 @@ class GamePlay extends Renderer {
 
     if (this.player) {
       if (this.playerHud) {
-        this.playerHud.update();
+        guard('HUD', () => this.playerHud.update());
 
         // boss health bar
         if (this.arkian && !this.arkian.dead) {
@@ -516,29 +535,31 @@ class GamePlay extends Renderer {
             this.playerHud.showBossHealth(this.arkian.sprite, 'ARKIAN');
             this._bossBarShown = true;
           }
-          this.playerHud.updateBossHealth();
+          guard('boss HUD', () => this.playerHud.updateBossHealth());
         } else if (this._bossBarShown) {
           this.playerHud.hideBossHealth();
           this._bossBarShown = false;
         }
       }
-      this.player.update(this.enemies);
-      this.updatePlayerCollisions(this.player.sprite);
+      guard('player', () => this.player.update(this.enemies));
+      guard('player collisions', () => this.updatePlayerCollisions(this.player.sprite));
 
       this._checkNpcProximity();
     }
 
     // update NPCs & AI
-    const engaging = this.collectEnemiesEngaging();
+    const engaging = guard('enemy engagement', () => this.collectEnemiesEngaging()) || [];
     //console.log(engaging.length)
 
     for (const actor of this.enemies) {
-      actor.update(this.player, engaging);
+      if (actor && typeof actor.update === 'function') {
+        guard(`enemy ${actor.constructor.name}`, () => actor.update(this.player, engaging));
+      }
     }
 
-    this._updateZOrders();
-    this._updateCollisions(this.frontGroup);
-    this._updateCollisions(this.behindGroup);
+    guard('z-order', () => this._updateZOrders());
+    guard('front collisions', () => this._updateCollisions(this.frontGroup));
+    guard('behind collisions', () => this._updateCollisions(this.behindGroup));
 
     // debug keys/events
     if (Globals.debug) {

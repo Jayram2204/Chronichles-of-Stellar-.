@@ -13,7 +13,7 @@ class Options extends Renderer {
     this.controls = new Controls(this.game, true);
 
     // state title
-    const controlsTitle = this.game.add.bitmapText(this.game.world.centerX, 24, Globals.bitmapFont, 'CONTROLS', 24);
+    const controlsTitle = this.game.add.bitmapText(this.game.world.centerX, 16, Globals.bitmapFont, 'CONTROLS', 14);
     controlsTitle.anchor.setTo(0.5);
 
     // add movement instructions

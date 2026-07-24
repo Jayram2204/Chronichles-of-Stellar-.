@@ -1,6 +1,7 @@
 import { EventHub, GameEvents } from '../events/EventHub';
-import { firestoreService } from '../services/firestoreService';
 import { authService } from '../services/authService';
+import { app } from '../services/firebase';
+import { getFirestore, doc, setDoc } from 'firebase/firestore';
 
 export interface BountyContract {
   id: string;
@@ -107,15 +108,18 @@ export class DailyBountyManager {
     const session = authService.getSession();
     if (session.user?.id) {
       try {
-        await firestoreService.savePlayerStats(session.user.id, {
-          score: 0,
-          enemyKills: 0,
-          currentLevel: 1,
-          currentAct: 1,
-          reputation: 25,
-          inventory: [],
+        const bountyData = this.activeBounties.map((b) => ({
+          id: b.id,
+          title: b.title,
+          currentCount: b.currentCount,
+          targetCount: b.targetCount,
+          isCompleted: b.isCompleted,
+        }));
+        const db = getFirestore(app);
+        await setDoc(doc(db, 'users', session.user.id, 'stats', 'daily_bounties'), {
+          bounties: bountyData,
           updatedAt: new Date().toISOString(),
-        });
+        }, { merge: true });
       } catch (e) {
         console.warn('[DailyBountyManager] Error saving bounty progress off-chain:', e);
       }
