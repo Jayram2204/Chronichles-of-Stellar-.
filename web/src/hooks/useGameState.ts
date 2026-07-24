@@ -5,6 +5,7 @@ import type { WalletState } from '../blockchain/WalletConnector';
 import { sorobanClient } from '../blockchain/SorobanClient';
 import { stellarClient } from '../blockchain/StellarClient';
 import { authService } from '../services/authService';
+import type { UserSession } from '../services/authService';
 import { firestoreService } from '../services/firestoreService';
 
 export interface LedgerLog {
@@ -13,7 +14,7 @@ export interface LedgerLog {
   ledger: number;
 }
 
-export function useGameState() {
+export function useGameState(onSessionUpdate?: (session: UserSession) => void) {
   const [wallet, setWallet] = useState<WalletState>({
     isConnected: false,
     publicKey: null,
@@ -241,14 +242,17 @@ export function useGameState() {
 
   const handleConnectWallet = async () => {
     try {
-      await walletConnector.connect();
+      const session = await authService.loginWithFreighter();
+      onSessionUpdate?.(session);
     } catch (err) {
       alert('Wallet connection failed: ' + err);
     }
   };
 
-  const handleDisconnectWallet = () => {
-    walletConnector.disconnect();
+  const handleDisconnectWallet = async () => {
+    await authService.logout();
+    const guestSession = await authService.loginAsGuest();
+    onSessionUpdate?.(guestSession);
   };
 
   return {

@@ -14,7 +14,6 @@ import { Keypair } from '@stellar/stellar-sdk';
 import { auth as firebaseAuth } from './firebase';
 import { firestoreService } from './firestoreService';
 import { walletConnector } from '../blockchain/WalletConnector';
-import { EventHub, GameEvents } from '../events/EventHub';
 
 export interface UserSession {
   isAuthenticated: boolean;
@@ -123,7 +122,6 @@ class AuthService {
     };
 
     this.saveSession();
-    EventHub.emit(GameEvents.WALLET_CONNECTED, walletState);
 
     await firestoreService.saveUserProfile({
       uid: this.currentSession.user!.id,

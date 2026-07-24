@@ -8,8 +8,13 @@ import { LeaderboardPanel } from './LeaderboardPanel';
 import { BountyBoardPanel } from './BountyBoardPanel';
 import { LedgerHistory } from './LedgerHistory';
 import { OverlayHUD } from './OverlayHUD';
+import type { UserSession } from '../../services/authService';
 
-export const GameScreen: React.FC = () => {
+interface GameScreenProps {
+  onSessionUpdate?: (session: UserSession) => void;
+}
+
+export const GameScreen: React.FC<GameScreenProps> = ({ onSessionUpdate }) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const phaserGameRef = useRef<any>(null);
   const [activeOverlayTab, setActiveOverlayTab] = useState<'none' | 'terminal' | 'bounties' | 'leaderboard' | 'wallet' | 'ledger'>('none');
@@ -32,7 +37,7 @@ export const GameScreen: React.FC = () => {
     gameOver,
     handleConnectWallet,
     handleDisconnectWallet,
-  } = useGameState();
+  } = useGameState(onSessionUpdate);
 
   useEffect(() => {
     const mountGame = async () => {

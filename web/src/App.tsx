@@ -78,7 +78,7 @@ function App() {
 
       {/* Primary Game UI (Phaser Engine Canvas + Cyberware HUD) */}
       <main className="w-full max-w-[1280px] flex justify-center">
-        <GameScreen />
+        <GameScreen onSessionUpdate={handleAuthenticated} />
       </main>
 
       {/* Lightweight Auth & Wallet Modal */}
